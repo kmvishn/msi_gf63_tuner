@@ -117,7 +117,12 @@ Filename: "{app}\{#AppExeUpdater}"; Parameters: "--updated"; Flags: postinstall 
 Filename: "{app}\{#AppExeCE}"; Description: "{cm:LaunchCE}"; Flags: nowait postinstall runascurrentuser skipifsilent; Components: confeditor
 
 [Registry]
-Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "msi_gf63_tuner hotkey handler"; Flags: dontcreatekey uninsdeletevalue
+; Start the hotkey handler at logon, so the Fn keys keep working once MSI
+; Center's "Micro Star SCM" service is gone.
+; NOTE: this entry previously declared a ValueName with NO ValueData, which
+; wrote an EMPTY string into HKLM\...\Run - a junk entry that started nothing,
+; leaving the Fn keys dead on a machine where MSI Center had been removed.
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "msi_gf63_tuner hotkey handler"; ValueData: """{app}\{#AppExeHH}"""; Flags: uninsdeletevalue; Components: hkhandler
 
 ; Stop and uninstall YAMDCC service before deleting program files
 ; TODO: better YAMDCC service stop/uninstall
