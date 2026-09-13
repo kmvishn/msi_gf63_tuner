@@ -117,9 +117,17 @@ They apply to any WMI2 laptop.
   whatever mode the EC defaulted to (**Silent** on a GF63 Thin 12HW) regardless
   of the config. Now writes the `Get_AP(0)` packet, like every other setter on
   this interface.
-- **The installer's hotkey-handler autostart entry was empty.** It declared a
-  `ValueName` with no `ValueData`, writing a blank string into
-  `HKLM\...\Run` that started nothing.
+- **The hotkey handler could never autostart.** The installer declared a Run
+  key `ValueName` with no `ValueData`, writing an empty string that started
+  nothing — and even with the path filled in it would still have failed, because
+  `HotkeyHandler.exe` is manifested `requireAdministrator` and an
+  `HKLM\...\Run` entry cannot elevate. Replaced with a logon **scheduled task**
+  running at highest privileges, which starts it elevated with no UAC prompt.
+- **Shortcuts were awkward.** The app was buried as
+  `msi_gf63_tuner\Config Editor`, so typing the program's name in the Start menu
+  found a folder rather than something launchable, and desktop icons were off by
+  default. Now a top-level Start menu entry and a desktop icon, both on by
+  default.
 
 ### 2. Dark theme
 
@@ -195,12 +203,6 @@ Two builds are published:
 
 ## Known issues
 
-- **`HotkeyHandler.exe` will not autostart.** It is manifested
-  `requireAdministrator`, and an `HKLM\...\Run` entry cannot elevate, so
-  Windows never launches it. Launch it by hand, or create a scheduled task set
-  to *Run with highest privileges* at logon. On the GF63 Thin 12HW the
-  brightness and volume keys are handled by the EC/firmware and keep working
-  without it — it is only needed for MSI-specific Fn combinations.
 - **`yamdcc.exe -apply` silently does nothing.** The CLI pushes the IPC message
   then exits immediately; `WaitWrite()` only flushes the local write, so the
   pipe closes before the service reads it. The config is saved but never

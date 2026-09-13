@@ -88,8 +88,11 @@ Name: "updater"; Description: "Updater"; Types: full compact
 
 [Tasks]
 Name: "starticons"; Description: "{cm:StartIcons}"; GroupDescription: "{cm:StartMenu}"
-Name: "deskicons"; Description: "{cm:DeskIcons}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-Name: "deskicons\common"; Description: "{cm:DeskIconsCommon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: exclusive unchecked
+; Desktop icons default to ON (they were "unchecked" before), with the
+; all-users variant preselected, so a plain Next-Next-Finish install actually
+; leaves something clickable on the desktop.
+Name: "deskicons"; Description: "{cm:DeskIcons}"; GroupDescription: "{cm:AdditionalIcons}"
+Name: "deskicons\common"; Description: "{cm:DeskIconsCommon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: exclusive
 Name: "deskicons\user"; Description: "{cm:DeskIconsUser}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: exclusive unchecked
 
 [Files]
@@ -101,12 +104,17 @@ Source: "YAMDCC.HotkeyHandler\bin\{#BuildConfig}\net48\*"; DestDir: "{app}"; Exc
 Source: "YAMDCC.Updater\bin\{#BuildConfig}\net48\*"; DestDir: "{app}"; Excludes: "WinRing0*.sys"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: updater; Check: Not IsPortableMode
 
 [Icons]
-Name: "{autoprograms}\{#AppName}\{#AppNameCE}"; Filename: "{app}\{#AppExeCE}"; Tasks: starticons; Check: not IsPortableMode
-Name: "{autoprograms}\{#AppName}\{#AppNameHH}"; Filename: "{app}\{#AppExeHH}"; Tasks: starticons; Check: not IsPortableMode
-Name: "{commondesktop}\{#AppName} {#AppNameCE}"; Filename: "{app}\{#AppExeCE}"; Tasks: deskicons\common
-Name: "{commondesktop}\{#AppName} {#AppNameHH}"; Filename: "{app}\{#AppExeHH}"; Tasks: deskicons\common
-Name: "{userdesktop}\{#AppName} {#AppNameCE}"; Filename: "{app}\{#AppExeCE}"; Tasks: deskicons\user
-Name: "{userdesktop}\{#AppName} {#AppNameHH}"; Filename: "{app}\{#AppExeHH}"; Tasks: deskicons\user
+; The config editor IS the app, so it gets a top-level shortcut named after the
+; program. Previously it was buried as "msi_gf63_tuner\Config Editor", which
+; meant typing the program's name in the Start menu found a folder rather than
+; something you could launch.
+Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeCE}"; Comment: "Fan control and tuning for the MSI GF63 Thin 12HW"; Tasks: starticons; Check: not IsPortableMode; Components: confeditor
+Name: "{autoprograms}\{#AppName} {#AppNameHH}"; Filename: "{app}\{#AppExeHH}"; Comment: "MSI hotkey handler for {#AppName}"; Tasks: starticons; Check: not IsPortableMode; Components: hkhandler
+
+Name: "{commondesktop}\{#AppName}"; Filename: "{app}\{#AppExeCE}"; Comment: "Fan control and tuning for the MSI GF63 Thin 12HW"; Tasks: deskicons\common; Components: confeditor
+Name: "{commondesktop}\{#AppName} {#AppNameHH}"; Filename: "{app}\{#AppExeHH}"; Tasks: deskicons\common; Components: hkhandler
+Name: "{userdesktop}\{#AppName}"; Filename: "{app}\{#AppExeCE}"; Comment: "Fan control and tuning for the MSI GF63 Thin 12HW"; Tasks: deskicons\user; Components: confeditor
+Name: "{userdesktop}\{#AppName} {#AppNameHH}"; Filename: "{app}\{#AppExeHH}"; Tasks: deskicons\user; Components: hkhandler
 
 [Run]
 Filename: "{dotnet40}\InstallUtil.exe"; Parameters: """{app}\yamdccsvc.exe"""; StatusMsg: "Installing fan control service..."; Check: ShouldInstallService; Flags: logoutput runhidden
@@ -116,13 +124,21 @@ Filename: "{sys}\net.exe"; Parameters: "start yamdccsvc"; StatusMsg: "Starting f
 Filename: "{app}\{#AppExeUpdater}"; Parameters: "--updated"; Flags: postinstall skipifnotsilent; Components: updater
 Filename: "{app}\{#AppExeCE}"; Description: "{cm:LaunchCE}"; Flags: nowait postinstall runascurrentuser skipifsilent; Components: confeditor
 
+; Autostart the hotkey handler at logon, as a SCHEDULED TASK rather than a
+; Run key.
+;
+; HotkeyHandler.exe is manifested requireAdministrator. An HKLM\...\Run entry
+; cannot elevate, so Windows silently never launches it - the original entry
+; here was doubly broken, since it also declared a ValueName with no ValueData
+; and wrote an empty string. A logon task with /RL HIGHEST is the supported way
+; to start an elevated app without a UAC prompt at every sign-in.
+Filename: "{sys}\schtasks.exe"; Parameters: "/Create /TN ""{#AppName} hotkey handler"" /TR ""\""{app}\{#AppExeHH}\"""" /SC ONLOGON /RU ""{username}"" /RL HIGHEST /F"; StatusMsg: "Registering hotkey handler autostart..."; Flags: logoutput runhidden; Components: hkhandler; Check: not IsPortableMode
+
 [Registry]
-; Start the hotkey handler at logon, so the Fn keys keep working once MSI
-; Center's "Micro Star SCM" service is gone.
-; NOTE: this entry previously declared a ValueName with NO ValueData, which
-; wrote an EMPTY string into HKLM\...\Run - a junk entry that started nothing,
-; leaving the Fn keys dead on a machine where MSI Center had been removed.
-Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "msi_gf63_tuner hotkey handler"; ValueData: """{app}\{#AppExeHH}"""; Flags: uninsdeletevalue; Components: hkhandler
+; (the old Run-key autostart lived here; see the scheduled task in [Run] above)
+; Left as an uninstall cleanup so the broken empty value from earlier installs
+; is removed rather than orphaned.
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "msi_gf63_tuner hotkey handler"; Flags: deletevalue uninsdeletevalue
 
 ; Stop and uninstall YAMDCC service before deleting program files
 ; TODO: better YAMDCC service stop/uninstall
@@ -130,6 +146,8 @@ Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 Filename: "{app}\{#AppExeUpdater}"; Parameters: "--setautoupdate false"; RunOnceId: "NoAutoUpdate"; Components: updater
 Filename: "{sys}\net.exe"; Parameters: "stop yamdccsvc"; RunOnceId: "StopSvc"; Flags: logoutput runhidden
 Filename: "{dotnet40}\InstallUtil.exe"; Parameters: "/u ""{app}\yamdccsvc.exe"""; RunOnceId: "DelSvc"; Flags: logoutput runhidden
+; remove the hotkey handler's logon task (see [Run])
+Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /TN ""{#AppName} hotkey handler"" /F"; RunOnceId: "DelHHTask"; Flags: logoutput runhidden
 
 ; Remove logs left behind by running InstallUtil while uninstalling the YAMDCC service.
 [UninstallDelete]
