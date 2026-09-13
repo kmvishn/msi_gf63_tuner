@@ -1,0 +1,15 @@
+name: Discussion
+about: Start a discussion
+title: ''
+labels:
+  - "type: discussion"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This template exists as a replacement to the GitHub Discussions. If you're reporting a bug or want a new feature, use the [appropriate issue template](https://codeberg.org/Sparronator9999/YAMDCC/issues/new) instead.
+  - type: textarea
+    id: discussion
+    attributes:
+      label: Discussion topic
+      placeholder: Write your discussion topic here.

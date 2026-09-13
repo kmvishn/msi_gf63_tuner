@@ -1,0 +1,20 @@
+name: Feature request
+about: Suggest an idea for this project
+title: ''
+labels:
+  - "status: needs triage"
+  - "type: enhancement"
+body:
+  - type: checkboxes
+    id: prereq
+    attributes:
+      label: Prerequisites
+      options:
+        - label: This issue is not a bug report or question. Use the [appropriate issue template](https://codeberg.org/Sparronator9999/YAMDCC/issues/new) for those issues.
+        - label: I have searched the [issue tracker](https://codeberg.org/Sparronator9999/YAMDCC/issues?q=label:"type:+enhancement") for duplicate or similar feature requests.
+        - label: I have not answered the above questions truthfully.
+  - type: textarea
+    id: request
+    attributes:
+      label: Feature request
+      placeholder: Please describe the feature you want to be added to YAMDCC.

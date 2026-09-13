@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+        <AssemblyTitle>YAMDCC EC library</AssemblyTitle>
+        <OutputType>Library</OutputType>
+        <Title>YAMDCC EC library</Title>
+    </PropertyGroup>
+    <ItemGroup>
+        <Reference Include="System.ServiceProcess"/>
+    </ItemGroup>
+    <ItemGroup>
+        <None Update="WinRing0.sys">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="WinRing0x64.sys">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+</Project>

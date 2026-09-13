@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <AssemblyName>ec-inspect</AssemblyName>
+        <AssemblyTitle>YAMDCC EC inspector</AssemblyTitle>
+        <OutputType>Exe</OutputType>
+        <Title>YAMDCC EC inspector</Title>
+        <UseWindowsForms>true</UseWindowsForms>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\YAMDCC.Common\YAMDCC.Common.csproj"/>
+        <ProjectReference Include="..\YAMDCC.ECAccess\YAMDCC.ECAccess.csproj"/>
+    </ItemGroup>
+</Project>

@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "dependencies": {
+    ".NETFramework,Version=v4.8": {
+      "MarkedNet": {
+        "type": "Direct",
+        "requested": "[2.1.4, )",
+        "resolved": "2.1.4",
+        "contentHash": "7JSHAIeNM1Zsmza046u6OIBx36GzzGDLjKCSxroAeYKYiAFQ+34dGfbx06nX1KR1RhxBucGyZxlDD1fv/33FIg=="
+      },
+      "Newtonsoft.Json": {
+        "type": "Direct",
+        "requested": "[13.0.3, )",
+        "resolved": "13.0.3",
+        "contentHash": "HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ=="
+      },
+      "TaskScheduler": {
+        "type": "Direct",
+        "requested": "[2.12.2, )",
+        "resolved": "2.12.2",
+        "contentHash": "glpAb3VrwfdAofp6PIyAzL0ZeTV7XUJ8muu0oZoTeyU5jtk2sMJ6QAMRRuFbovcaj+SBJiEUGklxIWOqQoxshA=="
+      },
+      "yamdcc.common": {
+        "type": "Project"
+      }
+    },
+    ".NETFramework,Version=v4.8/win-x64": {},
+    ".NETFramework,Version=v4.8/win-x86": {},
+    ".NETFramework,Version=v4.8/win7-x64": {},
+    ".NETFramework,Version=v4.8/win7-x86": {}
+  }
+}

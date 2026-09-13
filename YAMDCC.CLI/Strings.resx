@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="CopyrightS" xml:space="preserve">
+    <value>Copyright © Sparronator9999 (and Contributors) 2025
+This program is Free Software; run with the "-L" argument to print full license info.
+</value>
+  </data>
+  <data name="Copyright" xml:space="preserve">
+    <value>Copyright © Sparronator9999 (and Contributors) 2025
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see &lt;https://www.gnu.org/licenses/&gt;.
+</value>
+  </data>
+  <data name="Logo" xml:space="preserve">
+    <value>				     _  				_   _
+				    | | 			       | | |_|
+  _    _   ______   _________   ____| |  ______   ______       ______  | |  _
+ | |  | | |  __  | |  _   _  | |  __  | |  ____| |  ____|     |  ____| | | | |
+ | |  | | | |  | | | | | | | | | |  | | | |      | |          | |      | | | |
+ | |__| | | |_/  | | | | | | | | |__| | | |____  | |____      | |____  | | | |
+ |____  | |___/|_| |_| |_| |_| |______| |______| |______|     |______| |_| |_|
+  ____| |
+ |______|  v{0}
+</value>
+  </data>
+  <data name="Title" xml:space="preserve">
+    <value>YAMDCC CLI - v{0}</value>
+  </data>
+  <data name="Help" xml:space="preserve">
+    <value>Usage: {0} &lt;options&gt; [...]
+
+Program information:
+  -H, -help	Print this help screen.
+  -V, -version	Print YAMDCC's current version.
+  -L, -license	Print full copyright and license information.
+
+Basic commands:
+  -I, -info	Print information about a config, including available options
+		for `-fan`, `-profile`, and `-perfmode`.
+  -M, -monitor	Show the fan speed/RPM/temperature monitor
+		(general info, fan profiles, etc.)
+
+Fan profile management:
+  -N, -new	Create a new fan profile (overrides `-profile`)
+  -D, -delete	Delete the fan profile specified by `-profile`
+  -E, -edit	The fan and dprofile to modify, in the form &lt;fan,profile&gt;.
+  -S, -speed	Set a profile's speed/temperature point, in the format
+		&lt;idx,speed,up_t,down_t&gt;. Use -1 to keep original value.
+		The shorter form &lt;idx,speed&gt; is also accepted, and will
+		adjust only the fan speed at the given point.
+
+  -P, -profile	The fan profile to use for the system.
+  -chargelim	Set the laptop charge limit.
+  -perfmode	If `-profile` is unspecified, sets the default performance
+		mode for all fan profiles.
+		If `-profile` is specified, sets that profile's performance
+		mode.
+  -keylight	Sets the keyboard backlight on supported laptops to the
+		specified brightness (0-3).
+
+Config management:
+  -C, -config	Make changes to the specified config
+		(instead of the currently loaded one).
+  -A, -apply	Apply the config specified by `-config` to the computer.
+		If `-config` is unspecified, re-applies the currently loaded
+		config.
+  -author	Set the config author.
+
+Notes:
+  - All options will apply to the currently loaded config unless otherwise
+    specified with `-config`.
+  - Settings won't be applied to the system unless `-apply` is specified on
+    the command line. Use this to make multiple changes to a config before
+    applying new settings.</value>
+  </data>
+  <data name="errArgParse" xml:space="preserve">
+    <value>ERROR: failed to parse argument(s) for `{0}`</value>
+  </data>
+  <data name="errSvcConn" xml:space="preserve">
+    <value>ERROR: failed to connect to the YAMDCC service!
+Make sure the service is installed and running;
+try `net start yamdccsvc` to start the YAMDCC service.</value>
+  </data>
+  <data name="errSvcAdmin" xml:space="preserve">
+    <value>ERROR: Admin privileges required to connect to the YAMDCC service.</value>
+  </data>
+  <data name="errKLVal" xml:space="preserve">
+    <value>ERROR: keyboard backlight value must be an integer between 0 and {0}.</value>
+  </data>
+  <data name="errPMVal" xml:space="preserve">
+    <value>ERROR: performance mode must be an integer between {0} and {1}.</value>
+  </data>
+  <data name="errChgLimVal" xml:space="preserve">
+    <value>ERROR: charge limit must be an integer between 0 and 100.</value>
+  </data>
+  <data name="errNoCfg" xml:space="preserve">
+    <value>ERROR: No config is loaded, cannot show config info!</value>
+  </data>
+  <data name="wrnCfgAdmin" xml:space="preserve">
+    <value>WARNING: Admin privileges required to save config.
+Any changes made to the config using the CLI have been lost!</value>
+  </data>
+</root>

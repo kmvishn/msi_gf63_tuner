@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <AssemblyTitle>YAMDCC common code library</AssemblyTitle>
+        <OutputType>Library</OutputType>
+        <Title>YAMDCC common code library</Title>
+    </PropertyGroup>
+    <ItemGroup>
+        <EmbeddedResource Remove="Dialogs\CrashDialog.resx"/>
+        <EmbeddedResource Remove="Dialogs\ProgressDialog.resx"/>
+        <EmbeddedResource Remove="Dialogs\TextInputDialog.resx"/>
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="Dialogs\CrashDialog.resx"/>
+        <None Include="Dialogs\ProgressDialog.resx"/>
+        <None Include="Dialogs\TextInputDialog.resx"/>
+    </ItemGroup>
+    <ItemGroup>
+        <Reference Include="System.ServiceProcess"/>
+        <Reference Include="System.Windows.Forms"/>
+    </ItemGroup>
+    <ItemGroup>
+        <Compile Update="Dialogs\CrashDialog.cs">
+            <SubType>Form</SubType>
+        </Compile>
+        <Compile Update="Dialogs\ProgressDialog.cs">
+            <SubType>Form</SubType>
+        </Compile>
+        <Compile Update="Dialogs\TextInputDialog.cs">
+            <SubType>Form</SubType>
+        </Compile>
+        <Compile Update="Dialogs\VersionDialog.cs">
+            <SubType>Form</SubType>
+        </Compile>
+    </ItemGroup>
+    <ItemGroup>
+        <EmbeddedResource Update="Strings.resx">
+            <SubType>Designer</SubType>
+        </EmbeddedResource>
+    </ItemGroup>
+</Project>

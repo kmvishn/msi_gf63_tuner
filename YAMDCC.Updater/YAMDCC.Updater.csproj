@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <ApplicationIcon>fan-update.ico</ApplicationIcon>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <AssemblyName>Updater</AssemblyName>
+        <AssemblyTitle>YAMDCC updater</AssemblyTitle>
+        <OutputType>WinExe</OutputType>
+        <Title>YAMDCC updater</Title>
+        <UseWindowsForms>true</UseWindowsForms>
+    </PropertyGroup>
+    <ItemGroup>
+        <EmbeddedResource Remove="MainForm.resx" />
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="UpdateForm.resx" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="MarkedNet" Version="2.1.4" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+        <PackageReference Include="TaskScheduler" Version="2.12.2" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\YAMDCC.Common\YAMDCC.Common.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <Reference Include="System.Net.Http" />
+    </ItemGroup>
+    <ItemGroup>
+        <EmbeddedResource Update="Strings.resx">
+            <Generator></Generator>
+        </EmbeddedResource>
+    </ItemGroup>
+</Project>

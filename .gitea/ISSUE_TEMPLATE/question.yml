@@ -1,0 +1,21 @@
+name: Question
+about: Ask the developer a question
+title: ''
+labels:
+  - "status: needs triage"
+  - "type: question"
+body:
+  - type: checkboxes
+    id: prereq
+    attributes:
+      label: Prerequisites
+      options:
+        - label: This issue is not a bug report or feature request. Use the [appropriate issue template](https://codeberg.org/Sparronator9999/YAMDCC/issues/new) for those issues.
+        - label: I have searched the [FAQ](https://github.com/Sparronator9999/YAMDCC#faq) for answers.
+        - label: I have searched the [issue tracker](https://github.com/Sparronator9999/YAMDCC/issues?q=label:"type:+question") for duplicate or similar questions.
+        - label: I have not answered the above questions truthfully.
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      placeholder: Write your question here.

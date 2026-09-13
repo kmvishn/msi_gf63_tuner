@@ -1,0 +1,61 @@
+name: Build Program
+
+on:
+  push:
+    branches: ["main", "legacy-v1.x"]
+    paths:
+      - "**.cs"
+      - "**.csproj"
+      - "**.resx"
+      - "**build.yml"
+      - "**.iss"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        config: [Debug, Release]
+
+    runs-on: windows-2025
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v1
+
+    - name: Get short commit hash
+      uses: benjlevesque/short-sha@v3.0
+      with:
+        variable_name: sha_short
+
+    - name: Setup MSBuild path
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Setup NuGet
+      uses: nuget/setup-nuget@v2
+
+    - name: Restore cached NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Restore solution (including NuGet packages for solution)
+      run: msbuild.exe /t:restore /p:configuration="${{ matrix.config }}" /p:RestoreLockedMode=true
+
+    - name: Compile solution
+      run: msbuild.exe YAMDCC.sln /nologo /nr:false /p:DeployOnBuild=true /p:platform="Any CPU" /p:configuration="${{ matrix.config }}"
+
+    - name: Copy LICENSE to build path
+      run: copy LICENSE.md YAMDCC.ConfigEditor\bin\${{ matrix.config }}\net48
+
+    - name: Compile installer
+      run: Tools\InnoSetup\ISCC.exe /O+ "/DBuildConfig=${{ matrix.config }}" Installer/YAMDCC-Setup.iss
+
+    - name: Upload compiled installer artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: "YAMDCC-${{ github.ref_name }}-${{ env.sha_short }}-${{ matrix.config }}"
+        path: "./Output/"
+        compression-level: 9

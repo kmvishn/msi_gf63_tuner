@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <AssemblyName>yamdcc</AssemblyName>
+        <AssemblyTitle>YAMDCC CLI</AssemblyTitle>
+        <OutputType>Exe</OutputType>
+        <Title>YAMDCC CLI</Title>
+        <UseWindowsForms>true</UseWindowsForms>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\YAMDCC.Common\YAMDCC.Common.csproj"/>
+        <ProjectReference Include="..\YAMDCC.IPC\YAMDCC.IPC.csproj"/>
+    </ItemGroup>
+    <ItemGroup>
+        <EmbeddedResource Update="Strings.resx">
+            <DependentUpon>Strings.cs</DependentUpon>
+            <SubType>Designer</SubType>
+        </EmbeddedResource>
+    </ItemGroup>
+</Project>
