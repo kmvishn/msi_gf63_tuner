@@ -217,16 +217,28 @@ internal sealed class Wmi2FanController : IFanController, IDisposable
     }
     public bool SetPerfMode(PerfMode val, bool gen2)
     {
-        if (ReadWMI2("Get_AP", 1, out byte[] result))
+        // NOTE: this used to read/write the Get_AP(1) packet, which this EC
+        // silently ignores - the written byte did not even stick, and the
+        // effective mode (read from Get_AP(0)[3]) never changed. After a cold
+        // boot the laptop would sit in whatever mode the EC defaulted to
+        // (Silent on a GF63 Thin 12HW) no matter what the config asked for.
+        //
+        // GetPerfMode reads Get_AP(0)[3], and every other setter on this
+        // interface (SetChargeLimit, SetKeyLight) reads the Get_AP(0) packet,
+        // edits it and writes it back with byte[0] = 0. Doing the same here
+        // works: verified by cycling Silent/Balanced/Performance and reading
+        // each one back, with the charge limit and key light bytes in the same
+        // packet left intact.
+        if (ReadWMI2("Get_AP", 0, out byte[] result))
         {
-            result[0] = 1;
+            result[0] = 0;
             result[3] = val switch
             {
                 PerfMode.MaxBattery => 0xC2,
                 PerfMode.Silent => 0xC1,
                 PerfMode.Balanced => 0xC0,
                 PerfMode.Performance => 0xC4,
-                _ => throw new NotSupportedException($"0x{result[0]:X2} cannot be converted to an EC value."),
+                _ => throw new NotSupportedException($"{val} cannot be converted to an EC value."),
             };
             return WriteWMI2("Set_AP", result);
         }

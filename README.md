@@ -90,7 +90,7 @@ install ships no driver at all.
 
 ## What this fork changes
 
-### 1. Bug fixes in the WMI2 backend
+### 1. Bug fixes
 
 These are upstream defects on the `v2.0.0-dev` branch, not local workarounds.
 They apply to any WMI2 laptop.
@@ -111,6 +111,15 @@ They apply to any WMI2 laptop.
 - **The CLI crashed whenever its output was redirected.**
   `Console.BufferWidth` throws when stdout is not a console, so
   `yamdcc.exe -info > out.txt` died before doing anything.
+- **`SetPerfMode()` did nothing.** It wrote the `Get_AP(1)` packet, which this
+  EC silently ignores — the byte did not even stick, and the effective mode
+  (read from `Get_AP(0)[3]`) never changed. After a cold boot the laptop sat in
+  whatever mode the EC defaulted to (**Silent** on a GF63 Thin 12HW) regardless
+  of the config. Now writes the `Get_AP(0)` packet, like every other setter on
+  this interface.
+- **The installer's hotkey-handler autostart entry was empty.** It declared a
+  `ValueName` with no `ValueData`, writing a blank string into
+  `HKLM\...\Run` that started nothing.
 
 ### 2. Dark theme
 
@@ -186,6 +195,12 @@ Two builds are published:
 
 ## Known issues
 
+- **`HotkeyHandler.exe` will not autostart.** It is manifested
+  `requireAdministrator`, and an `HKLM\...\Run` entry cannot elevate, so
+  Windows never launches it. Launch it by hand, or create a scheduled task set
+  to *Run with highest privileges* at logon. On the GF63 Thin 12HW the
+  brightness and volume keys are handled by the EC/firmware and keep working
+  without it — it is only needed for MSI-specific Fn combinations.
 - **`yamdcc.exe -apply` silently does nothing.** The CLI pushes the IPC message
   then exits immediately; `WaitWrite()` only flushes the local write, so the
   pipe closes before the service reads it. The config is saved but never
