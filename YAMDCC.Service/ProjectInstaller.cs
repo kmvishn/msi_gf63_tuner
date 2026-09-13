@@ -28,7 +28,7 @@ public sealed class ProjectInstaller : Installer
         ServiceInstaller svcInstaller = new()
         {
             Description = Strings.GetString("svcDesc"),
-            DisplayName = "YAMDCC Service",
+            DisplayName = "msi_gf63_tuner Service",
             ServiceName = "yamdccsvc",
             StartType = ServiceStartMode.Automatic
         };

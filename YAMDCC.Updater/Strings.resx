@@ -118,9 +118,9 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="warnDev" xml:space="preserve">
-    <value>You appear to be running a development version of YAMDCC.
+    <value>You appear to be running a development version of msi_gf63_tuner.
 This updater cannot handle dev versions, and will likely
-try to downgrade YAMDCC to the latest release.
+try to downgrade msi_gf63_tuner to the latest release.
 
 Continue?</value>
   </data>
@@ -137,7 +137,7 @@ Continue?</value>
 
 This could possibly mean one of the following:
 
-- If you have pre-release versions disabled, there are no full releases of YAMDCC yet. Enable pre-releases and try checking for updates again.
+- If you have pre-release versions disabled, there are no full releases of msi_gf63_tuner yet. Enable pre-releases and try checking for updates again.
 - There is a programming bug causing this message to appear.</value>
   </data>
   <data name="errCheckUpdate" xml:space="preserve">
@@ -166,7 +166,7 @@ Error details:
     <value>&lt;span style="margin:1em;color:red"&gt;&lt;b&gt;Pre-release&lt;/b&gt;&lt;/span&gt;</value>
   </data>
   <data name="InstallPrompt" xml:space="preserve">
-    <value>Click "Install update", then click "Yes" at the UAC prompt to install the YAMDCC update.</value>
+    <value>Click "Install update", then click "Yes" at the UAC prompt to install the msi_gf63_tuner update.</value>
   </data>
   <data name="errDownload" xml:space="preserve">
     <value>**An error occurred while downloading the update.**
@@ -199,12 +199,12 @@ Error details:
     <value>Admin is required to finish installing the update.</value>
   </data>
   <data name="UpToDate" xml:space="preserve">
-    <value>YAMDCC is up to date.
+    <value>msi_gf63_tuner is up to date.
 
 [Force-reinstall latest release?](yamdcc:reinstall)</value>
   </data>
   <data name="DevVer" xml:space="preserve">
-    <value>You appear to be running a development version of YAMDCC.
+    <value>You appear to be running a development version of msi_gf63_tuner.
 
 [Update/downgrade to latest public release anyway?](yamdcc:reinstall)</value>
   </data>

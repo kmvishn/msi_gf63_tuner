@@ -132,53 +132,53 @@ Are you sure you want to delete this profile?</value>
     <value>Please enter a new name for your fan profile:</value>
   </data>
   <data name="dlgSvcDelData" xml:space="preserve">
-    <value>Keep the YAMDCC data directory
+    <value>Keep the msi_gf63_tuner data directory
 (located at {0})?
 
-Click "No" if you don't intend to re-install YAMDCC.
+Click "No" if you don't intend to re-install msi_gf63_tuner.
 
 WARNING:
 Make sure you save your config using the "Save config" button before clicking "No" here!</value>
   </data>
   <data name="dlgSvcStop" xml:space="preserve">
-    <value>Are you sure you want to stop the YAMDCC service?
+    <value>Are you sure you want to stop the msi_gf63_tuner service?
 
-YAMDCC will close once the service is stopped.</value>
+msi_gf63_tuner will close once the service is stopped.</value>
   </data>
   <data name="dlgUninstall" xml:space="preserve">
-    <value>Are you sure you want to uninstall the YAMDCC service?
+    <value>Are you sure you want to uninstall the msi_gf63_tuner service?
 
-Only proceed if you would like to delete YAMDCC from your computer or move its program files to another folder.
+Only proceed if you would like to delete msi_gf63_tuner from your computer or move its program files to another folder.
 
-YAMDCC will close once the uninstall is complete.</value>
+msi_gf63_tuner will close once the uninstall is complete.</value>
   </data>
   <data name="exSvcTimeout" xml:space="preserve">
-    <value>Failed to connect to the YAMDCC service (connection timed out).</value>
+    <value>Failed to connect to the msi_gf63_tuner service (connection timed out).</value>
   </data>
   <data name="dlgSvcStartCrash" xml:space="preserve">
-    <value>The YAMDCC service failed to start.
+    <value>The msi_gf63_tuner service failed to start.
 
-This could be due to a service crash on startup, or the system couldn't find the YAMDCC service (due to being moved or deleted since it was installed).
+This could be due to a service crash on startup, or the system couldn't find the msi_gf63_tuner service (due to being moved or deleted since it was installed).
 
-See the FAQ for more information: https://codeberg.org/Sparronator9999/YAMDCC/wiki/FAQ</value>
+See the FAQ for more information: https://codeberg.org/Sparronator9999/msi_gf63_tuner/wiki/FAQ</value>
   </data>
   <data name="dlgSvcInstallFail" xml:space="preserve">
     <value>The service failed to install.
 
-Try running the YAMDCC config editor again, and if the service installation fails again, open a bug report with this error.</value>
+Try running the msi_gf63_tuner config editor again, and if the service installation fails again, open a bug report with this error.</value>
   </data>
   <data name="dlgSvcNotFound" xml:space="preserve">
-    <value>The YAMDCC service is not installed on this computer, and the executable (yamdccsvc.exe) was not found in the same folder as this program.
+    <value>The msi_gf63_tuner service is not installed on this computer, and the executable (yamdccsvc.exe) was not found in the same folder as this program.
 
-Re-download/re-install YAMDCC to fix this.</value>
+Re-download/re-install msi_gf63_tuner to fix this.</value>
   </data>
   <data name="dlgSvcNotInstalled" xml:space="preserve">
-    <value>The YAMDCC service is not installed yet.
+    <value>The msi_gf63_tuner service is not installed yet.
 Would you like to install it now?
 (Clicking "No" will quit the program.)</value>
   </data>
   <data name="dlgSvcNotRunning" xml:space="preserve">
-    <value>The YAMDCC service is currently not running.
+    <value>The msi_gf63_tuner service is currently not running.
 Would you like to start it now?
 (Clicking "No" will quit the program.)</value>
   </data>
@@ -200,8 +200,8 @@ When enabled, information about the fan speed and RPM, and the temperature
 of the component being cooled by the fan (e.g. CPU) to the status bar.</value>
   </data>
   <data name="ttExit" xml:space="preserve">
-    <value>Click to quit YAMDCC.
-The YAMDCC service will continue to run in the background.</value>
+    <value>Click to quit msi_gf63_tuner.
+The msi_gf63_tuner service will continue to run in the background.</value>
   </data>
   <data name="ttFanSel" xml:space="preserve">
     <value>Click or scroll to change the fan to adjust a fan profile for.
@@ -249,21 +249,21 @@ using "Load Config", or saved using "Save Config", whichever came last.</value>
     <value>Click to go to this project's Codeberg page.</value>
   </data>
   <data name="ttStopSvc" xml:space="preserve">
-    <value>Click to stop the YAMDCC service.
-This will also quit the YAMDCC config editor (this program).</value>
+    <value>Click to stop the msi_gf63_tuner service.
+This will also quit the msi_gf63_tuner config editor (this program).</value>
   </data>
   <data name="ttUninstall" xml:space="preserve">
-    <value>Click to uninstall the YAMDCC service (and quit the YAMDCC config editor).
-Only do this if you want to uninstall YAMDCC or move its program files to another location.</value>
+    <value>Click to uninstall the msi_gf63_tuner service (and quit the msi_gf63_tuner config editor).
+Only do this if you want to uninstall msi_gf63_tuner or move its program files to another location.</value>
   </data>
   <data name="dlgUninstallErr" xml:space="preserve">
-    <value>Failed to uninstall the YAMDCC service!</value>
+    <value>Failed to uninstall the msi_gf63_tuner service!</value>
   </data>
   <data name="dlgSvcStopErr" xml:space="preserve">
-    <value>Failed to stop the YAMDCC service!</value>
+    <value>Failed to stop the msi_gf63_tuner service!</value>
   </data>
   <data name="dlgNoAdmin" xml:space="preserve">
-    <value>If you see this message, YAMDCC is not running as an Administrator.
+    <value>If you see this message, msi_gf63_tuner is not running as an Administrator.
 
 Please re-run this program as Administrator
 (by right-clicking on this program and clicking "Run as administrator").</value>
@@ -296,7 +296,7 @@ Please re-run this program as Administrator
     <value>Please load a config to start</value>
   </data>
   <data name="statSvcTimeout" xml:space="preserve">
-    <value>WARN: Service has not responded for a while. Try restarting YAMDCC.</value>
+    <value>WARN: Service has not responded for a while. Try restarting msi_gf63_tuner.</value>
   </data>
   <data name="dlgECtoConfStart" xml:space="preserve">
     <value>Would you like to copy your laptop's default fan profiles to this config?
@@ -306,7 +306,7 @@ You will need to reboot your computer to reset the fan profiles to their default
   <data name="dlgECtoConfErr" xml:space="preserve">
     <value>An error occurred while fetching your laptop's default fan profiles.
 
-This is probably a bug; please report this to YAMDCC's issue tracker, including the log folder
+This is probably a bug; please report this to msi_gf63_tuner's issue tracker, including the log folder
 (located at {0}).</value>
   </data>
   <data name="dlgECtoConfSuccess" xml:space="preserve">
@@ -317,7 +317,7 @@ Make sure to save your config (using the "Save config" button)!</value>
   <data name="dlgECtoConfReboot" xml:space="preserve">
     <value>Your laptop hasn't rebooted yet following a request to copy the default fan profiles of your laptop to the loaded config.
 
-Cancel copying the default fan profiles and continue loading YAMDCC?</value>
+Cancel copying the default fan profiles and continue loading msi_gf63_tuner?</value>
   </data>
   <data name="ttUpT" xml:space="preserve">
     <value>This is the temperature that the component being cooled by
@@ -367,16 +367,16 @@ Performance mode description:
 {0}</value>
   </data>
   <data name="dlgSvcInstalling" xml:space="preserve">
-    <value>Installing YAMDCC service. This may take some time...</value>
+    <value>Installing msi_gf63_tuner service. This may take some time...</value>
   </data>
   <data name="dlgSvcUninstalling" xml:space="preserve">
-    <value>Uninstalling YAMDCC service. This may take some time...</value>
+    <value>Uninstalling msi_gf63_tuner service. This may take some time...</value>
   </data>
   <data name="dlgSvcStarting" xml:space="preserve">
-    <value>Starting YAMDCC service...</value>
+    <value>Starting msi_gf63_tuner service...</value>
   </data>
   <data name="dlgSvcStopping" xml:space="preserve">
-    <value>Stopping YAMDCC service...</value>
+    <value>Stopping msi_gf63_tuner service...</value>
   </data>
   <data name="ttSwitchAll" xml:space="preserve">
     <value>Click to toggle switching fan profiles for other fans' profiles when switching any fan's profile.
@@ -391,12 +391,12 @@ While enabled:
   - If you decline deleting any fan profile, this option will be disabled if other fan profiles were deleted.</value>
   </data>
   <data name="ttECtoConf" xml:space="preserve">
-    <value>Click to copy your laptop's default fan profiles to the currently loaded YAMDCC config.
+    <value>Click to copy your laptop's default fan profiles to the currently loaded msi_gf63_tuner config.
 Once you click this, you must reboot your laptop to reset the fan profiles to default.</value>
   </data>
   <data name="ttFanMode" xml:space="preserve">
     <value>WARNING:
-Every fan mode here except for "Advanced" has undefined behaviour while being used with YAMDCC.
+Every fan mode here except for "Advanced" has undefined behaviour while being used with msi_gf63_tuner.
 If unsure, keep this setting on "Advanced" and edit the fan profile directly.
 
 Click or scroll to select your MSI laptop's fan mode.
@@ -405,17 +405,17 @@ Fan mode description:
 {0}</value>
   </data>
   <data name="dlgAutoUpdate" xml:space="preserve">
-    <value>Would you like YAMDCC to check for updates automatically?
+    <value>Would you like msi_gf63_tuner to check for updates automatically?
 
 You may change this setting by launching `Updater.exe` and clicking `Update options` &gt; `Check for updates automatically`.</value>
   </data>
   <data name="ttLogLevel" xml:space="preserve">
-    <value>Click to change the log level of the YAMDCC service.
+    <value>Click to change the log level of the msi_gf63_tuner service.
 It is recommended to leave this on Info or lower (unless helping a developer with debugging),
 since Debug can produce quite a lot of output.</value>
   </data>
   <data name="ttUpdate" xml:space="preserve">
-    <value>Click to check for YAMDCC updates.
+    <value>Click to check for msi_gf63_tuner updates.
 To change whether automatic update checks are enabled or to enable or disable pre-release updates, launch `Updater.exe` and click `Update options`.</value>
   </data>
   <data name="dlgAdvanced" xml:space="preserve">
@@ -430,20 +430,20 @@ Enable advanced settings anyway?</value>
 NOTE: these settings should be left on the default value unless you know what you're doing.</value>
   </data>
   <data name="dlgSvcStopped" xml:space="preserve">
-    <value>The YAMDCC service was stopped sucessfully.</value>
+    <value>The msi_gf63_tuner service was stopped sucessfully.</value>
   </data>
   <data name="dlgSvcUninstalled" xml:space="preserve">
-    <value>The YAMDCC service was uninstalled sucessfully.</value>
+    <value>The msi_gf63_tuner service was uninstalled sucessfully.</value>
   </data>
   <data name="dlgRegConfWarn" xml:space="preserve">
     <value>RegConfs are deprecated and will be removed in a future release.
 All MSI laptops should no longer need RegConfs.
-Update to a YAMDCC-provided config to remove this warning.</value>
+Update to a msi_gf63_tuner-provided config to remove this warning.</value>
   </data>
   <data name="dlgLoadConfFail" xml:space="preserve">
-    <value>Failed to load YAMDCC config!
+    <value>Failed to load msi_gf63_tuner config!
 
-If you recently updated YAMDCC, this could be due to a breaking change in the config format. Download an updated config from Codeberg (go to `Help` &gt; `About` &gt; `Source`, then go to the `Configs` folder).
+If you recently updated msi_gf63_tuner, this could be due to a breaking change in the config format. Download an updated config from Codeberg (go to `Help` &gt; `About` &gt; `Source`, then go to the `Configs` folder).
 
 If you're a config writer, you may have ran into a bug with the config validator (rare), or made an error while writing the config.</value>
   </data>

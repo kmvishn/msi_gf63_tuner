@@ -122,13 +122,13 @@
   </data>
   <data name="abtCopyright" xml:space="preserve">
     <value>Copyright © Sparronator9999 (and contributors), 2023-2025.
-YAMDCC and its authors are not affiliated with Micro-Star International Co., Ltd. in any way.
+msi_gf63_tuner and its authors are not affiliated with Micro-Star International Co., Ltd. in any way.
 Made in Australia from at least 99% Australian contributions.</value>
   </data>
   <data name="Crash" xml:space="preserve">
     <value>{0} has crashed!
 
-Before reporting a bug, try again on the latest release of YAMDCC (if available).
+Before reporting a bug, try again on the latest release of msi_gf63_tuner (if available).
 If the crash still occurs, please create an issue with the following crash report:</value>
   </data>
 </root>

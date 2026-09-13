@@ -152,14 +152,14 @@ along with this program.  If not, see &lt;https://www.gnu.org/licenses/&gt;.
 </value>
   </data>
   <data name="Title" xml:space="preserve">
-    <value>YAMDCC CLI - v{0}</value>
+    <value>msi_gf63_tuner CLI - v{0}</value>
   </data>
   <data name="Help" xml:space="preserve">
     <value>Usage: {0} &lt;options&gt; [...]
 
 Program information:
   -H, -help	Print this help screen.
-  -V, -version	Print YAMDCC's current version.
+  -V, -version	Print msi_gf63_tuner's current version.
   -L, -license	Print full copyright and license information.
 
 Basic commands:
@@ -205,12 +205,12 @@ Notes:
     <value>ERROR: failed to parse argument(s) for `{0}`</value>
   </data>
   <data name="errSvcConn" xml:space="preserve">
-    <value>ERROR: failed to connect to the YAMDCC service!
+    <value>ERROR: failed to connect to the msi_gf63_tuner service!
 Make sure the service is installed and running;
-try `net start yamdccsvc` to start the YAMDCC service.</value>
+try `net start yamdccsvc` to start the msi_gf63_tuner service.</value>
   </data>
   <data name="errSvcAdmin" xml:space="preserve">
-    <value>ERROR: Admin privileges required to connect to the YAMDCC service.</value>
+    <value>ERROR: Admin privileges required to connect to the msi_gf63_tuner service.</value>
   </data>
   <data name="errKLVal" xml:space="preserve">
     <value>ERROR: keyboard backlight value must be an integer between 0 and {0}.</value>

@@ -149,7 +149,7 @@ If unchecked, this will cause the Close button to exit Hotkey Handler entirely
 (and therefore hotkeys won't be handled).</value>
   </data>
   <data name="exSvcTimeout" xml:space="preserve">
-    <value>Failed to connect to the YAMDCC service (connection timed out).</value>
+    <value>Failed to connect to the msi_gf63_tuner service (connection timed out).</value>
   </data>
   <data name="ttHkAction" xml:space="preserve">
     <value>Click to change the action that will be triggered when the
@@ -182,11 +182,11 @@ Please re-run this program as Administrator
 (by right-clicking on this program and clicking "Run as administrator").</value>
   </data>
   <data name="dlgSvcStopped" xml:space="preserve">
-    <value>The YAMDCC service is currently not running.
-Please run the YAMDCC Config Editor to start it.</value>
+    <value>The msi_gf63_tuner service is currently not running.
+Please run the msi_gf63_tuner Config Editor to start it.</value>
   </data>
   <data name="dlgSvcNotInstalled" xml:space="preserve">
-    <value>The YAMDCC service is not installed.
-Please run the YAMDCC Config Editor to install it.</value>
+    <value>The msi_gf63_tuner service is not installed.
+Please run the msi_gf63_tuner Config Editor to install it.</value>
   </data>
 </root>
