@@ -29,6 +29,7 @@ using YAMDCC.Common.Dialogs;
 using YAMDCC.HotkeyHandler.Config;
 using YAMDCC.HotkeyHandler.Win32;
 using YAMDCC.IPC;
+using YAMDCC.Common.UI;
 
 namespace YAMDCC.HotkeyHandler;
 
@@ -65,6 +66,9 @@ internal sealed partial class MainForm : Form
     {
         Startup = startup;
         InitializeComponent();
+
+        // dark "MSI Dragon" theme (black + red)
+        Theme.Apply(this);
 
         TrayIcon.Text = Text = $"YAMDCC hotkey handler - v{Utils.GetVerString()}";
         Icon = Utils.GetEntryAssemblyIcon();

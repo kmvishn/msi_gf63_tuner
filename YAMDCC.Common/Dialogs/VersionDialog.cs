@@ -17,6 +17,7 @@
 using System;
 using System.Diagnostics;
 using System.Windows.Forms;
+using YAMDCC.Common.UI;
 
 namespace YAMDCC.Common.Dialogs;
 
@@ -25,6 +26,9 @@ public sealed partial class VersionDialog : Form
     public VersionDialog()
     {
         InitializeComponent();
+
+        // dark "MSI Dragon" theme (black + red)
+        Theme.Apply(this);
         lblDesc.Text = Strings.GetString("abtDesc");
         lblCopyright.Text = Strings.GetString("abtCopyright");
         lblVersion.Text += Utils.GetVerString();

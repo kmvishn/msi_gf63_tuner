@@ -26,6 +26,7 @@ using System.Windows.Forms;
 using YAMDCC.Common;
 using YAMDCC.Common.Configs;
 using YAMDCC.Updater.CodebergApi;
+using YAMDCC.Common.UI;
 
 namespace YAMDCC.Updater;
 
@@ -49,6 +50,9 @@ internal sealed partial class UpdateForm : Form
     public UpdateForm(Release release = null, bool autoUpdate = false)
     {
         InitializeComponent();
+
+        // dark "MSI Dragon" theme (black + red)
+        Theme.Apply(this);
         Icon = Utils.GetEntryAssemblyIcon();
         AutoUpdate = autoUpdate;
 

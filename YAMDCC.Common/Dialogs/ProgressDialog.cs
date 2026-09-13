@@ -17,6 +17,7 @@
 using System;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using YAMDCC.Common.UI;
 
 namespace YAMDCC.Common.Dialogs;
 
@@ -55,6 +56,9 @@ public sealed partial class ProgressDialog<TResult> : Form
     {
         Opacity = 0;
         InitializeComponent();
+
+        // dark "MSI Dragon" theme (black + red)
+        Theme.Apply(this);
 
         pbProgress.Style = ProgressBarStyle.Marquee;
 

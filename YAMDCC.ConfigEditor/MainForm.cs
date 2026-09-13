@@ -24,6 +24,7 @@ using YAMDCC.Common;
 using YAMDCC.Common.Configs;
 using YAMDCC.Common.Dialogs;
 using YAMDCC.Common.Logs;
+using YAMDCC.Common.UI;
 using YAMDCC.IPC;
 
 namespace YAMDCC.ConfigEditor;
@@ -45,7 +46,7 @@ internal sealed partial class MainForm : Form
         new("YAMDCC-Server");
 
     private NumericUpDown[] numUpTs, numDownTs, numFanSpds;
-    private TrackBar[] tbFanSpds;
+    private DarkTrackBar[] tbFanSpds;
 
     private readonly ToolTip ttMain = new();
 
@@ -59,12 +60,19 @@ internal sealed partial class MainForm : Form
     {
         InitializeComponent();
 
+        // dark "MSI Dragon" theme (black + red). Must run after
+        // InitializeComponent(), since it restyles the controls it creates.
+        Theme.Apply(this);
+        // ToolTip is a component, not a child control, so it needs theming
+        // separately or it pops up as a white box on the dark form.
+        Theme.Apply(ttMain);
+
         // Set the window icon using the application icon.
         // Saves about 8-9 KB from not having to embed the same icon twice.
         Icon = Utils.GetEntryAssemblyIcon();
 
         // set title text to include program version
-        Text = $"YAMDCC config editor - v{Utils.GetVerString()}";
+        Text = $"msi_gf63_tuner - config editor - v{Utils.GetVerString()}";
 
         // set literally every tooltip
         tsiLoadConf.ToolTipText = Strings.GetString("ttLoadConf");
@@ -678,7 +686,7 @@ internal sealed partial class MainForm : Form
             numUpTs = new NumericUpDown[6];
             numDownTs = new NumericUpDown[6];
             numFanSpds = new NumericUpDown[7];
-            tbFanSpds = new TrackBar[7];
+            tbFanSpds = new DarkTrackBar[7];
 
             tblCurve.ColumnStyles.Clear();
             tblCurve.ColumnCount = numFanSpds.Length + 1;
@@ -698,7 +706,7 @@ internal sealed partial class MainForm : Form
                 numFanSpds[i].ValueChanged += new EventHandler(FanSpdChange);
                 tblCurve.Controls.Add(numFanSpds[i], i + 1, 0);
 
-                tbFanSpds[i] = new TrackBar()
+                tbFanSpds[i] = new DarkTrackBar()
                 {
                     Dock = DockStyle.Fill,
                     LargeChange = 10,
@@ -896,7 +904,7 @@ internal sealed partial class MainForm : Form
         {
             tbFanSpds[i].Value = (int)numFanSpds[i].Value;
         }
-        else if (c is TrackBar)
+        else if (c is DarkTrackBar)
         {
             numFanSpds[i].Value = tbFanSpds[i].Value;
         }
@@ -1179,7 +1187,7 @@ internal sealed partial class MainForm : Form
 
     private static Label FanCurveLabel(string text, float scale, int tabIdx, ContentAlignment align = ContentAlignment.MiddleRight)
     {
-        return new Label
+        Label lbl = new()
         {
             AutoSize = true,
             Dock = DockStyle.Fill,
@@ -1189,6 +1197,9 @@ internal sealed partial class MainForm : Form
             Text = text,
             TextAlign = align,
         };
+        // created after Theme.Apply() ran, so theme it here
+        Theme.ApplyTo(lbl);
+        return lbl;
     }
 
     private NumericUpDown FanCurveNUD(int tag, float scale, int tabIdx)
@@ -1202,6 +1213,9 @@ internal sealed partial class MainForm : Form
             Tag = tag,
         };
         nud.KeyDown += new KeyEventHandler(NUDKeyDown);
+        // the fan curve controls are built long after Theme.Apply() ran in the
+        // constructor, so they have to be themed as they are created
+        Theme.ApplyTo(nud);
         return nud;
     }
 

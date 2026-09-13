@@ -17,6 +17,7 @@
 using System;
 using System.Diagnostics;
 using System.Windows.Forms;
+using YAMDCC.Common.UI;
 
 namespace YAMDCC.Common.Dialogs;
 
@@ -25,6 +26,9 @@ public sealed partial class CrashDialog : Form
     public CrashDialog(Exception ex)
     {
         InitializeComponent();
+
+        // dark "MSI Dragon" theme (black + red)
+        Theme.Apply(this);
         lblError.Text = Strings.GetString("Crash", Utils.GetAppTitle());
         txtReport.Text =
             $"Version: {Utils.GetVerString()}\r\n" +

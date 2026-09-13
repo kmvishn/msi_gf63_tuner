@@ -17,6 +17,8 @@
     <ItemGroup>
         <Reference Include="System.ServiceProcess"/>
         <Reference Include="System.Windows.Forms"/>
+        <!-- needed by UI\Theme.cs (Color, Pen, SolidBrush, Rectangle) -->
+        <Reference Include="System.Drawing"/>
     </ItemGroup>
     <ItemGroup>
         <Compile Update="Dialogs\CrashDialog.cs">

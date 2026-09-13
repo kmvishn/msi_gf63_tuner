@@ -121,6 +121,12 @@ internal sealed class Wmi2FanController : IFanController, IDisposable
                     string temp =
                         $"{ecDate.Substring(4, 4)}-{ecDate.Substring(0, 2)}-{ecDate.Substring(2, 2)}" +
                         $"T{ecDate.Substring(8, 2).Replace(' ', '0')}:{ecDate.Substring(11, 2)}:{ecDate.Substring(14, 2)}";
+                    // ecVer was read above but never stored, leaving
+                    // EcInfo.Version null - which ECtoConf() then wrote into
+                    // the generated config as an empty <FirmVer>.
+                    ecInfo.Version = ecVer.Trim('\0', ' ');
+                    Log.Debug($"EC firmware version: {ecInfo.Version}", nameof(Wmi2FanController));
+
                     ecInfo.Date = DateTime.ParseExact(temp, "s", CultureInfo.InvariantCulture);
                     Log.Debug($"EC firmware date: {ecInfo.Date:G}", nameof(Wmi2FanController));
                     return ecInfo;
@@ -158,6 +164,7 @@ internal sealed class Wmi2FanController : IFanController, IDisposable
                     Speed = tSpds[i + 2],
                 });
             }
+            return prof;
         }
         return null;
     }
@@ -271,8 +278,12 @@ internal sealed class Wmi2FanController : IFanController, IDisposable
         if (ReadWMI2("Get_AP", 0, out byte[] result) &&
             (result[5] & 0x80) == 0x80)
         {
-            // mask off "supported" bit before returning
-            val = (byte)(result[4] & 0x7F);
+            // mask off "supported" bit before returning.
+            // NOTE: the charge limit lives in result[5], NOT result[4]
+            // (result[4] is the keyboard backlight brightness) - reading
+            // result[4] here returned the key light level as a charge
+            // percentage. SetChargeLimit() correctly writes result[5].
+            val = (byte)(result[5] & 0x7F);
             return true;
         }
         val = 0;

@@ -63,8 +63,13 @@ internal static class Program
         }
         else
         {
-            // don't print logo if CMD window is too small
-            if (Console.BufferWidth >= 80)
+            // don't print logo if CMD window is too small.
+            // Console.BufferWidth throws IOException("The handle is invalid")
+            // when stdout is redirected, which crashed the whole program
+            // before it did anything - so any attempt to pipe or capture CLI
+            // output failed unless -nologo happened to be passed. Treat
+            // redirected output as "no window", and print the short title.
+            if (!Console.IsOutputRedirected && Console.BufferWidth >= 80)
             {
                 Console.WriteLine(Strings.GetString("Logo", Utils.GetVerString()));
             }

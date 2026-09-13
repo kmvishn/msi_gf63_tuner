@@ -1,8 +1,14 @@
 <Project>
     <PropertyGroup>
         <AnalysisLevel>latest-recommended</AnalysisLevel>
-        <Authors>Sparronator9999</Authors>
-        <Copyright>Copyright © 2023-2025 Sparronator9999 (and Contributors)</Copyright>
+        <!--
+            Fork metadata. GPL-3 requires the original copyright notice to be
+            kept, so the upstream line stays and the fork is added alongside it
+            rather than replacing it.
+        -->
+        <Product>msi_gf63_tuner</Product>
+        <Authors>kmvishn</Authors>
+        <Copyright>Copyright © 2023-2025 Sparronator9999 (and Contributors). Fork modifications © 2026 kmvishn.</Copyright>
         <EnableNETAnalyzers>True</EnableNETAnalyzers>
         <LangVersion>13.0</LangVersion>
         <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
@@ -16,4 +22,28 @@
     <PropertyGroup Condition="'$(Configuration)'=='Release'">
         <DebugType>none</DebugType>
     </PropertyGroup>
+    <!--
+        Supplies the .NET Framework 4.8 reference assemblies as a NuGet package
+        so the solution builds with just the .NET SDK ("dotnet build"), without
+        needing Visual Studio or the standalone .NET Framework targeting pack
+        installed. Build-time only: PrivateAssets="all" keeps it out of output.
+    -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    </ItemGroup>
+    <!--
+        The .resx files here hold non-string resources (icons/bitmaps). The
+        full Visual Studio MSBuild can serialise those with BinaryFormatter,
+        but "dotnet build" cannot, and fails with MSB3823/MSB3822. Setting
+        GenerateResourceUsePreserializedResources and referencing
+        System.Resources.Extensions is the supported replacement.
+        System.Resources.Extensions must ship alongside the app (it provides
+        the reader used at runtime), so it is NOT marked PrivateAssets.
+    -->
+    <PropertyGroup>
+        <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="System.Resources.Extensions" Version="9.0.0" />
+    </ItemGroup>
 </Project>

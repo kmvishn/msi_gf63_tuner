@@ -482,7 +482,11 @@ internal sealed class FanControlService : ServiceBase
 
         // Write the fan profile to the appropriate registers for each fan:
         FC.SetFanProf(Config.CpuFan.FanProfs[Config.CpuFan.ProfSel], false, Config.OffsetDT);
-        FC.SetFanProf(Config.CpuFan.FanProfs[Config.GpuFan.ProfSel], true, Config.OffsetDT);
+        // NOTE: this must index GpuFan, not CpuFan - the original read
+        // Config.CpuFan.FanProfs[Config.GpuFan.ProfSel], which applied the
+        // CPU curve to the GPU fan (and threw IndexOutOfRangeException
+        // whenever the GPU had more fan profiles than the CPU).
+        FC.SetFanProf(Config.GpuFan.FanProfs[Config.GpuFan.ProfSel], true, Config.OffsetDT);
 
         // Write the performance mode
         Log.Info(Strings.GetString("svcWritePerfMode"));
@@ -684,8 +688,20 @@ internal sealed class FanControlService : ServiceBase
             Config.FirmVer = EcInfo.Version;
             Config.FirmDate = EcInfo.Date;
 
-            Config.CpuFan.FanProfs[0] = GetDefaultFanProf(false);
-            Config.GpuFan.FanProfs[0] = GetDefaultFanProf(true);
+            FanProf cpuProf = GetDefaultFanProf(false),
+                gpuProf = GetDefaultFanProf(true);
+
+            if (cpuProf is null || gpuProf is null)
+            {
+                // never save a config with a missing default profile:
+                // the service would apply an empty fan curve on next start.
+                Log.Error("EC-to-config aborted: could not read the default fan profiles.");
+                CommonConfig.SetECtoConfState(ECtoConfState.Fail);
+                return false;
+            }
+
+            Config.CpuFan.FanProfs[0] = cpuProf;
+            Config.GpuFan.FanProfs[0] = gpuProf;
 
             Log.Info("Saving config...");
             Config.Save(Paths.CurrentConfV2);
@@ -709,6 +725,16 @@ internal sealed class FanControlService : ServiceBase
 
         Log.Info(Strings.GetString("svcReadProfs", gpu ? "GPU" : "CPU"));
         FanProf prof = FC.GetFanProf(gpu, Config.OffsetDT);
+
+        if (prof is null)
+        {
+            // don't NullReferenceException into the caller's catch-all,
+            // which would report a generic EC-to-config failure and hide
+            // the fact that the EC read itself was what failed.
+            Log.Error($"Failed to read the default {(gpu ? "GPU" : "CPU")} fan profile from the EC.");
+            return null;
+        }
+
         prof.Name = "Default";
         prof.Desc = Strings.GetString("DefaultDesc", gpu ? "GPU" : "CPU");
 

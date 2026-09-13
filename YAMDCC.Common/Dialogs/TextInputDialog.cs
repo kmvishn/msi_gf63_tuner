@@ -16,6 +16,7 @@
 
 using System;
 using System.Windows.Forms;
+using YAMDCC.Common.UI;
 
 namespace YAMDCC.Common.Dialogs;
 
@@ -29,6 +30,9 @@ public sealed partial class TextInputDialog : Form
     public TextInputDialog(string caption, string title, string text, bool multiline = false)
     {
         InitializeComponent();
+
+        // dark "MSI Dragon" theme (black + red)
+        Theme.Apply(this);
         lblCaption.Text = caption;
         txtInput.Text = text;
         txtInput.Multiline = multiline;

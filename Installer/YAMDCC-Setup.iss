@@ -3,13 +3,18 @@
 ;#define BuildConfig "Release"
 
 ; Define constants used in other sections of the installer.
-#define AppName "YAMDCC"
+#define AppName "msi_gf63_tuner"
 #define AppNameCE "Config Editor"
 #define AppNameHH "Hotkey Handler"
-#define AppVer "1.2.1"
-#define AppVerFriendly "1.2.1"
-#define AppPublisher "Sparronator9999"
+; NOTE: these were left at 1.2.1 while Directory.build.props moved to
+; 2.0.0-dev, so the installer registered itself in Add/Remove Programs as
+; v1.2.1 while installing v2.0.0-dev binaries. Kept in sync here.
+; AppVer is also used for OutputBaseFilename.
+#define AppVer "2.0.0-dev"
+#define AppVerFriendly "2.0.0-dev"
+#define AppPublisher "kmvishn"
 #define AppURL "https://codeberg.org/Sparronator9999/YAMDCC"
+; upstream project this is forked from (kept for the support/update links)
 #define AppExeCE "ConfigEditor.exe"
 #define AppExeHH "HotkeyHandler.exe"
 #define AppExeSvc "yamdccsvc.exe"
@@ -43,7 +48,7 @@ DisableProgramGroupPage=yes
 DisableWelcomePage=no
 LicenseFile=Installer\LICENSE.rtf
 LZMANumFastBytes=273
-OutputBaseFilename=YAMDCC-v{#AppVer}-{#BuildConfig}-setup
+OutputBaseFilename={#AppName}-v{#AppVer}-{#BuildConfig}-setup
 SetupIconFile=YAMDCC.Updater\fan-update.ico
 SetupMutex=YAMDCC-Setup-{{AFE03526-3AAD-40FA-AF49-03A0150C4229}
 SolidCompression=yes
@@ -66,10 +71,18 @@ english.LaunchCE=Launch config editor
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Components]
-Name: "main"; Description: "YAMDCC Service and common libraries (required)"; Types: full compact custom; Flags: fixed
+Name: "main"; Description: "Fan control service and common libraries (required)"; Types: full compact custom; Flags: fixed
 Name: "cli"; Description: "CLI"; types: full
 Name: "confeditor"; Description: "Config Editor"; Types: full compact
-Name: "ecinspect"; Description: "EC Inspector"; Types: full
+; EC Inspector needs the WinRing0 kernel driver (the one Windows Defender
+; flags), and cannot work on a WMI2 laptop at all - Wmi2FanController's
+; ReadECByte/WriteECByte throw NotSupportedException. Removed from the "full"
+; type so a default install stays driverless; still available under Custom for
+; WinRing0-backend laptops.
+; NOTE: excluding this component alone is NOT enough to keep the driver out -
+; WinRing0.sys also lands in the Service build output, so the "main" component
+; below excludes it explicitly.
+Name: "ecinspect"; Description: "EC Inspector (requires the WinRing0 driver; not usable on WMI2 laptops)"
 Name: "hkhandler"; Description: "Hotkey Handler"; Types: full
 Name: "updater"; Description: "Updater"; Types: full compact
 
@@ -80,12 +93,12 @@ Name: "deskicons\common"; Description: "{cm:DeskIconsCommon}"; GroupDescription:
 Name: "deskicons\user"; Description: "{cm:DeskIconsUser}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: exclusive unchecked
 
 [Files]
-Source: "YAMDCC.Service\bin\{#BuildConfig}\net48\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: main
-Source: "YAMDCC.CLI\bin\{#BuildConfig}\net48\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: cli
-Source: "YAMDCC.ConfigEditor\bin\{#BuildConfig}\net48\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: confeditor
+Source: "YAMDCC.Service\bin\{#BuildConfig}\net48\*"; DestDir: "{app}"; Excludes: "WinRing0*.sys"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: main
+Source: "YAMDCC.CLI\bin\{#BuildConfig}\net48\*"; DestDir: "{app}"; Excludes: "WinRing0*.sys"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: cli
+Source: "YAMDCC.ConfigEditor\bin\{#BuildConfig}\net48\*"; DestDir: "{app}"; Excludes: "WinRing0*.sys"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: confeditor
 Source: "YAMDCC.ECInspector\bin\{#BuildConfig}\net48\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: ecinspect
-Source: "YAMDCC.HotkeyHandler\bin\{#BuildConfig}\net48\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: hkhandler
-Source: "YAMDCC.Updater\bin\{#BuildConfig}\net48\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: updater; Check: Not IsPortableMode
+Source: "YAMDCC.HotkeyHandler\bin\{#BuildConfig}\net48\*"; DestDir: "{app}"; Excludes: "WinRing0*.sys"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: hkhandler
+Source: "YAMDCC.Updater\bin\{#BuildConfig}\net48\*"; DestDir: "{app}"; Excludes: "WinRing0*.sys"; Flags: ignoreversion recursesubdirs createallsubdirs; Components: updater; Check: Not IsPortableMode
 
 [Icons]
 Name: "{autoprograms}\{#AppName}\{#AppNameCE}"; Filename: "{app}\{#AppExeCE}"; Tasks: starticons; Check: not IsPortableMode
@@ -96,15 +109,15 @@ Name: "{userdesktop}\{#AppName} {#AppNameCE}"; Filename: "{app}\{#AppExeCE}"; Ta
 Name: "{userdesktop}\{#AppName} {#AppNameHH}"; Filename: "{app}\{#AppExeHH}"; Tasks: deskicons\user
 
 [Run]
-Filename: "{dotnet40}\InstallUtil.exe"; Parameters: """{app}\yamdccsvc.exe"""; StatusMsg: "Installing YAMDCC service..."; Check: ShouldInstallService; Flags: logoutput runhidden
-Filename: "{sys}\net.exe"; Parameters: "start yamdccsvc"; StatusMsg: "Starting YAMDCC service..."; Check: not IsPortableMode; Flags: logoutput runhidden
+Filename: "{dotnet40}\InstallUtil.exe"; Parameters: """{app}\yamdccsvc.exe"""; StatusMsg: "Installing fan control service..."; Check: ShouldInstallService; Flags: logoutput runhidden
+Filename: "{sys}\net.exe"; Parameters: "start yamdccsvc"; StatusMsg: "Starting fan control service..."; Check: not IsPortableMode; Flags: logoutput runhidden
 ; Run YAMDCC updater to show "YAMDCC has been updated successfully" message
 ; if run silently, otherwise run Config Editor (if selected during setup)
 Filename: "{app}\{#AppExeUpdater}"; Parameters: "--updated"; Flags: postinstall skipifnotsilent; Components: updater
 Filename: "{app}\{#AppExeCE}"; Description: "{cm:LaunchCE}"; Flags: nowait postinstall runascurrentuser skipifsilent; Components: confeditor
 
 [Registry]
-Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "YAMDCC hotkey handler"; Flags: dontcreatekey uninsdeletevalue
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "msi_gf63_tuner hotkey handler"; Flags: dontcreatekey uninsdeletevalue
 
 ; Stop and uninstall YAMDCC service before deleting program files
 ; TODO: better YAMDCC service stop/uninstall

@@ -1,3 +1,107 @@
+# msi_gf63_tuner
+
+**A fork of [YAMDCC](https://codeberg.org/Sparronator9999/YAMDCC) by Sparronator9999,**
+**tuned for the MSI GF63 Thin 12HW-004IN.**
+
+A fast, lightweight MSI Center replacement and fan control utility. On this
+laptop it replaces ~950 MB of MSI Center with a **6.6 MB** install that needs
+**no kernel driver**.
+
+| | |
+|---|---|
+| Fork maintainer | kmvishn |
+| Upstream | [Sparronator9999/YAMDCC](https://codeberg.org/Sparronator9999/YAMDCC) (GPL-3.0-or-later) |
+| Target hardware | MSI GF63 Thin 12HW-004IN — board MS-16R7, BIOS E16R7IMS.10F, EC 16R7IMS1.104 |
+| Backend | WMI2 (`MSI_ACPI`), WMI version 2.8 — **no WinRing0** |
+
+## What this fork changes
+
+Upstream is a general-purpose tool for many MSI laptops. This fork targets one
+machine and fixes what stopped it working there.
+
+### Bug fixes in the WMI2 backend
+
+These are upstream defects on the `v2.0.0-dev` branch, not local workarounds.
+They apply to any WMI2 laptop, not just this one.
+
+1. **`Wmi2FanController.GetFanProf()` always returned `null`.** It built the
+   profile then fell through to `return null`, so the caller dereferenced null
+   and a bare `catch` reported it as a generic failure. This broke
+   **EC-to-config entirely** — the one feature needed to support a laptop that
+   has no shipped config.
+2. **`GetEcFirmwareInfo()` never stored the version string,** so every
+   generated config got an empty `<FirmVer>`.
+3. **`GetChargeLimit()` read the wrong byte** (`result[4]`, the keyboard
+   backlight brightness) while set/supported use `result[5]` — it reported the
+   key light level as a charge percentage.
+4. **The GPU fan profile was read from the CPU's profile list**
+   (`Config.CpuFan.FanProfs[Config.GpuFan.ProfSel]`), applying the CPU curve to
+   the GPU fan and throwing `IndexOutOfRangeException` when the lists differed
+   in length.
+5. **The CLI crashed whenever its output was redirected.**
+   `Console.BufferWidth` throws when stdout is not a console, so
+   `yamdcc.exe -info > out.txt` always died before doing anything.
+
+### Known remaining bug
+
+**`yamdcc.exe -apply` silently does nothing.** The CLI pushes the IPC message
+then exits immediately; `WaitWrite()` only flushes the local write, so the pipe
+closes before the service reads it. The config is saved but never applied — a
+service restart (or the GUI's Apply, which stays connected) is needed. The GUI
+is unaffected.
+
+### Dark "MSI Dragon" theme
+
+Windows Forms has no dark mode, so `YAMDCC.Common/UI/` adds one: near-black
+`#141414` with MSI red `#E4002B`, plus a dark title bar via DWM.
+
+Four controls are Win32 wrappers that ignore `BackColor` and had to be
+reimplemented: `DarkTrackBar`, `DarkTabControl`, `DarkComboBox`, and owner-drawn
+menus/tooltips.
+
+### Hardware config
+
+`Configs-V2/MSI-Thin-GF63-12HW.xml` — the default profiles were **read back
+from this laptop's own EC**, not copied from another model. A second
+`Sustained 35W` profile is included for PL1=35 W / PL2=60 W on a single-fan
+thin chassis.
+
+### Build changes
+
+Builds with the plain .NET SDK (`dotnet build`), no Visual Studio required —
+see [BUILD-NOTES-MS16R7.md](BUILD-NOTES-MS16R7.md).
+
+### Driverless by default
+
+WinRing0 ships in the build output of several projects, so the installer now
+excludes `WinRing0*.sys` from every component except EC Inspector, and EC
+Inspector is no longer part of the "full" install type. Defender flags that
+driver, and it cannot work on a WMI2 laptop anyway.
+
+## Measured on this laptop
+
+Applying the `Sustained 35W` curve under a 16-thread load:
+
+```
+CPU 89 C peak during the PL2 burst, fan ramped to 95% duty
+then steady at 73-77 C / 72% duty / ~4300 RPM for 136 s once PL1 took over
+39 of 40 samples matched the programmed curve exactly
+```
+
+## Licence
+
+GPL-3.0-or-later, unchanged from upstream. Original copyright
+© 2023-2025 Sparronator9999 and contributors; fork modifications © 2026
+kmvishn. See [LICENSE.md](LICENSE.md).
+
+---
+
+*Everything below is upstream's original README, kept for reference. Some of it*
+*(installed size, the WinRing0/Defender warning, supported-laptop list) does not*
+*describe this fork.*
+
+---
+
 # YAMDCC - Yet Another MSI (Dragon) Center Clone
 
 A fast, lightweight MSI Center alternative and fan control utility for MSI laptops.
