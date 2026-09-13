@@ -8,6 +8,32 @@ replacing MSI Center.
 A fork of [YAMDCC](https://codeberg.org/Sparronator9999/YAMDCC) by
 Sparronator9999, retargeted at one laptop and fixed until it worked on it.
 
+## ⚠️ Disclaimer — read this first
+
+**Use this at your own risk. If you break your laptop, that is on you, not me.**
+
+- This program writes directly to your laptop's **embedded controller** to
+  control the fans, power limits and charging. That is low-level hardware
+  access. No warranty of any kind is given — see the GPL, sections 15 and 16.
+- **You can overheat your machine with it.** Setting fan speeds too low, or
+  thresholds too high, under sustained load can cook your CPU. If you turn the
+  fans down and then run something heavy, that is your decision and your
+  hardware.
+- It is tuned for **one specific laptop** (MSI GF63 Thin 12HW-004IN). Fan curves
+  and EC registers vary between models. On a different machine the shipped
+  config may be wrong for your hardware.
+- This is a **development build** of a fork of an upstream project that is
+  itself mid-rewrite. Expect bugs. See [Known issues](#known-issues).
+- Do not run this alongside MSI Center. Both write the same registers.
+- Not affiliated with, endorsed by, or supported by Micro-Star International
+  Co., Ltd. in any way.
+
+**Please do not report problems with this fork to the upstream author**
+([Sparronator9999](https://codeberg.org/Sparronator9999)) — the modifications
+here are mine, and upstream did not make them.
+
+If you are not comfortable with any of the above, use MSI Center instead.
+
 ![Fan control tab](Media/tuner-FanControl.png)
 
 <details><summary><b>Extras tab</b> (click to expand)</summary>
