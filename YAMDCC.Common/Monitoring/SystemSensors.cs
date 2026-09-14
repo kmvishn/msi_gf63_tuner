@@ -200,14 +200,19 @@ public sealed class SystemSensors : IDisposable
                     continue;
                 }
 
+                bool discrete = a.DedicatedVideoMemory > 512L * 1024 * 1024;
                 list.Add(new GpuReading
                 {
                     Name = a.Name,
                     Luid = a.Luid,
                     // an integrated GPU carves a small aperture out of system
                     // RAM; a discrete card reports its own large pool
-                    Discrete = a.DedicatedVideoMemory > 512L * 1024 * 1024,
-                    VramTotalMB = a.DedicatedVideoMemory / 1048576.0,
+                    Discrete = discrete,
+                    // For an integrated GPU the dedicated figure is a token
+                    // 128 MB it never actually fills, while its real working
+                    // set comes out of shared system memory - so show that as
+                    // the capacity instead.
+                    VramTotalMB = (discrete ? a.DedicatedVideoMemory : a.SharedSystemMemory) / 1048576.0,
                 });
             }
         }
@@ -378,8 +383,12 @@ public sealed class SystemSensors : IDisposable
 
         try
         {
+            // NOTE: DedicatedUsage reads 0 for every adapter on this hardware,
+            // including the discrete one - the actual working set is reported
+            // under SharedUsage. Using DedicatedUsage alone left VRAM showing a
+            // permanent 0 MB, so both are summed.
             using ManagementObjectSearcher s = new(
-                "SELECT Name, DedicatedUsage FROM Win32_PerfFormattedData_GPUPerformanceCounters_GPUAdapterMemory");
+                "SELECT Name, DedicatedUsage, SharedUsage FROM Win32_PerfFormattedData_GPUPerformanceCounters_GPUAdapterMemory");
             foreach (ManagementBaseObject o in s.Get())
             {
                 string name = o["Name"] as string;
@@ -394,7 +403,9 @@ public sealed class SystemSensors : IDisposable
                     continue;
                 }
 
-                double vram = Convert.ToDouble(o["DedicatedUsage"], CultureInfo.InvariantCulture);
+                double vram =
+                    Convert.ToDouble(o["DedicatedUsage"], CultureInfo.InvariantCulture) +
+                    Convert.ToDouble(o["SharedUsage"], CultureInfo.InvariantCulture);
                 result.TryGetValue(luid, out (double Load, double Vram) cur);
                 result[luid] = (cur.Load, cur.Vram + vram);
             }

@@ -1277,8 +1277,6 @@ internal sealed partial class MainForm : Form
         lblCpuClock = Row("Clock");
         lblCpuPkgW = Row("Package power");
         lblCpuCoreW = Row("Cores power");
-        Row("Fan speed", lblFanSpdC);
-        Row("Fan RPM", lblRPM1);
 
         // ---- GPUs ----------------------------------------------------------
         List<GpuReading> gpus = [];
@@ -1294,7 +1292,6 @@ internal sealed partial class MainForm : Form
             if (g.Discrete)
             {
                 Row("Temperature", lblTempG);
-                Row("Fan speed", lblFanSpdG);
             }
 
             Label load = Row("Load");
@@ -1302,6 +1299,13 @@ internal sealed partial class MainForm : Form
             Label watts = Row("Power");
             GpuLabels[g.Luid] = (load, vram, watts);
         }
+
+        // ---- Cooling -------------------------------------------------------
+        // This laptop has a single fan shared by the CPU and GPU, so listing a
+        // "fan speed" under each of them implied two fans that do not exist.
+        Header("Cooling");
+        Row("Fan speed", lblFanSpdC);
+        Row("Fan RPM", lblRPM1);
 
         // ---- System --------------------------------------------------------
         Header("System");
@@ -1314,7 +1318,10 @@ internal sealed partial class MainForm : Form
 
         // the unused RPM slots the EC always reports are hidden by
         // RefreshSensors() once it knows how many fans actually exist
-        foreach (Label l in new[] { lblRPM2, lblRPM3, lblRPM4 })
+        // The EC always reports four RPM slots; only the first is a real fan
+        // here. lblFanSpdG is still written to by the service's fan-speed
+        // message, so it is kept alive but not shown.
+        foreach (Label l in new[] { lblRPM2, lblRPM3, lblRPM4, lblFanSpdG })
         {
             l.Visible = false;
         }

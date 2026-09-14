@@ -37,7 +37,15 @@ internal static class Dxgi
     {
         public string Name { get; set; }
         public string Luid { get; set; }
+
+        /// <summary>On-board VRAM. Near zero for an integrated GPU.</summary>
         public long DedicatedVideoMemory { get; set; }
+
+        /// <summary>
+        /// System memory the adapter may borrow. This is the meaningful
+        /// capacity for an integrated GPU, which has almost no VRAM of its own.
+        /// </summary>
+        public long SharedSystemMemory { get; set; }
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -145,6 +153,7 @@ internal static class Dxgi
                         Name = desc.Description?.Trim(),
                         Luid = $"luid_0x{desc.AdapterLuid.HighPart:X8}_0x{desc.AdapterLuid.LowPart:X8}",
                         DedicatedVideoMemory = desc.DedicatedVideoMemory.ToInt64(),
+                        SharedSystemMemory = desc.SharedSystemMemory.ToInt64(),
                     });
                 }
                 finally
