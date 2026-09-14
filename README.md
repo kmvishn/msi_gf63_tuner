@@ -1,9 +1,10 @@
 # msi_gf63_tuner
 
-A lightweight fan control and tuning utility for the **MSI GF63 Thin 12HW-004IN**,
-replacing MSI Center.
+A lightweight fan control, tuning and hardware monitoring utility for the
+**MSI GF63 Thin 12HW-004IN**, replacing MSI Center — and, on this machine, MSI
+Afterburner too.
 
-**~950 MB → 6.6 MB. No kernel driver. No background bloat.**
+**~950 MB → 7 MB. No kernel driver. No background bloat.**
 
 A fork of [YAMDCC](https://codeberg.org/Sparronator9999/YAMDCC) by
 Sparronator9999, retargeted at one laptop and fixed until it worked on it.
@@ -36,9 +37,16 @@ If you are not comfortable with any of the above, use MSI Center instead.
 
 ![Fan control tab](Media/tuner-FanControl.png)
 
-<details><summary><b>Extras tab</b> (click to expand)</summary>
+![Monitoring tab](Media/tuner-Monitoring.png)
+
+<details><summary><b>Extras tab, and the desktop overlay</b> (click to expand)</summary>
 
 ![Extras tab](Media/tuner-Extras.png)
+
+The overlay, floating over everything else on screen (shown here against a
+blank dark window so the labels are legible):
+
+![Overlay](Media/tuner-Overlay.png)
 
 </details>
 
@@ -53,12 +61,16 @@ Everything here was measured on this machine, not assumed:
 | BIOS | E16R7IMS.10F |
 | EC firmware | `16R7IMS1.104` (2023-06-13) |
 | CPU | Intel Core i5-12500H |
+| iGPU | Intel Iris Xe Graphics |
+| dGPU | Intel Arc A370M |
 | Fans | **one** — `Get_Fan(0)` reports `fan[0]` only |
 | Backend | WMI2 (`MSI_ACPI`), WMI version **2.8** |
-| Driver | **none** — no WinRing0 |
+| Driver | **none** — no WinRing0, no RTCore64 |
 
 It will likely work on other WMI2-era MSI laptops, but nothing else has been
-tested and no other configs are shipped.
+tested and no other configs are shipped. The GPU monitoring is Intel-specific
+(see [Hardware monitoring](#4-hardware-monitoring-without-a-kernel-driver));
+on an NVIDIA machine those rows will be empty while everything else still works.
 
 ## Features
 
@@ -70,10 +82,12 @@ tested and no other configs are shipped.
 | Keyboard backlight | off / low / mid / bright |
 | Performance mode | Silent, Balanced, Performance, Max Battery |
 | Win ↔ Fn key swap | supported |
-| Monitoring | CPU/GPU temperature, fan duty and RPM |
+| Hardware monitoring | CPU and **both** GPUs: temperature, load, clocks, VRAM, power |
+| Desktop overlay | click-through always-on-top readout |
+| In-game OSD | optional, via RivaTuner Statistics Server |
 
 Not included (MSI Center features with no equivalent here): Mystic Light RGB,
-Super Charger, LAN Manager, Win-key disable, full hardware monitoring.
+Super Charger, LAN Manager, Win-key disable.
 
 ## Why it uses no driver
 
@@ -87,6 +101,18 @@ That matters because the alternative — WinRing0, a kernel driver — is
 and it was flagged on this machine during development. The installer now
 excludes `WinRing0*.sys` from every component except EC Inspector, so a default
 install ships no driver at all.
+
+The same rule was applied to monitoring. MSI Afterburner reads its sensors
+through **RTCore64.sys**, and bundling that was considered and rejected:
+
+- It has an [unfixed arbitrary ring-0 read/write vulnerability](https://nvd.nist.gov/vuln/detail/CVE-2019-16098)
+  (CVE-2019-16098) and is on Microsoft's vulnerable-driver blocklist, so
+  shipping it would install a known local privilege-escalation primitive.
+- It is proprietary and not redistributable, which is incompatible with this
+  project's GPL-3 licence.
+
+So every reading below comes from an interface Windows or Intel already
+exposes to user mode. Nothing is installed to get them.
 
 ## What this fork changes
 
@@ -147,6 +173,11 @@ reimplemented rather than recoloured:
 Tooltips are owner-drawn too, since a `ToolTip` is a component and never
 appears in the control tree.
 
+The per-profile **Perf. mode** selector was also dropped from the Fan control
+tab. It duplicated the global one on Extras and caused confusion about which of
+the two actually applied; the per-profile value is still read and written in the
+config, it is simply no longer a second control competing with the first.
+
 ### 3. Fan curve tuned for a 35 W thin chassis
 
 `Configs-V2/MSI-Thin-GF63-12HW.xml` ships two profiles:
@@ -164,7 +195,86 @@ appears in the control tree.
 `OffsetDT` is `true` on this EC: `Get_Thermal` returns down-threshold
 *offsets*, so `Tdown = Tup − offset`.
 
-### 4. Builds without Visual Studio
+### 4. Hardware monitoring, without a kernel driver
+
+The **Monitoring** tab replaces what MSI Afterburner was installed for. Both
+GPUs are enumerated and reported separately — the integrated Iris Xe and the
+discrete Arc A370M — alongside the CPU, the fan, memory and power state:
+
+```
+CPU                             75 °C   100%   2091 MHz   9.5 W pkg / 7.7 W cores
+Intel Iris Xe (integrated)        --      0%    500 MHz    601 / 8043 MB    0.0 W
+Intel Arc A370M (discrete)      56 °C     0%    300 MHz     36 / 4018 MB    8.6 W
+Cooling                                  85%   4927 RPM
+System                          10.9 / 15.7 GB   on AC
+```
+
+Every value comes from an interface that is already present on the machine:
+
+| Reading | Source |
+|---|---|
+| CPU package / cores power | Windows **Energy Meter** performance counters (`RAPL_Package0_*`), in-box |
+| CPU load, clock | `Processor Information` counters |
+| CPU temperature | the EC, via the same WMI2 `Get_Temperature` call used for the fan curve |
+| Adapter identity, VRAM size | **DXGI** `IDXGIFactory1::EnumAdapters1` |
+| GPU load, VRAM in use | `GPU Engine` / `GPU Adapter Memory` counters, matched to each adapter by LUID |
+| GPU core and memory clock, Arc temperature | **Intel Level Zero** sysman (`ze_loader.dll`, shipped with the driver) |
+| GPU power and voltage | **Intel IGCL** (`ControlLib.dll`, from the driver store) |
+| Fan duty and RPM | the service, over the existing named pipe |
+| Frame rate | RivaTuner Statistics Server, if it happens to be running |
+
+The tab shows which of these are live on the **Sensor source** line, so it is
+obvious when a reading is missing because an interface is absent rather than
+because the value is zero.
+
+Two details that cost the most time to get right, in case they are useful
+elsewhere:
+
+- The RAPL counters report **energy in nanojoules and time in milliseconds**,
+  and they only update about once a second. Sampling them over a 250 ms window
+  gave 6.97 W where the true figure was 16.82 W. Readings are now held until at
+  least 900 ms of counter time has elapsed.
+- `GPU Adapter Memory\Dedicated Usage` reads **zero** on this hardware; the
+  real figure is in `Shared Usage`, because the Arc is on a shared-memory
+  design. Reporting "dedicated" would have shown 0 MB permanently.
+
+If MSI Afterburner *is* running, its shared memory is read and used where it
+overlaps, so nothing is lost by keeping it. It is no longer needed: the Arc
+power figure read through IGCL (8.91 W) matched Afterburner's own reading
+(8.6–8.7 W) on the same idle desktop.
+
+### 5. Overlay and in-game OSD
+
+**Options ▸ Show overlay** puts the same readings in a borderless,
+click-through, always-on-top window in the corner of the screen. It is a normal
+top-most window — nothing is injected into anything — so it draws over the
+desktop and over windowed and borderless-windowed games, which is how most
+modern titles run.
+
+It cannot draw over a game in **exclusive fullscreen**. That mode bypasses the
+desktop compositor entirely, and the only way around it is to inject a DLL and
+hook the Direct3D present call. That is what RivaTuner does, and it is both
+invasive and the kind of behaviour anti-cheat software is built to detect, so
+it is deliberately not done here.
+
+For those cases, **Options ▸ Show in-game OSD (RTSS)** publishes the same text
+into RivaTuner Statistics Server's shared memory, which draws it inside the
+game. RTSS is optional and is only needed for exclusive fullscreen; note that
+RTSS hooks games, so check your game's anti-cheat policy before using it.
+
+Both toggles can be set at startup, for a shortcut that launches straight into
+a readout:
+
+```
+ConfigEditor.exe --overlay
+ConfigEditor.exe --overlay --osd
+```
+
+The sensor poll follows whatever is actually displayed, so closing the window
+to the tray while the overlay is up keeps the overlay updating, and with
+nothing shown nothing is polled.
+
+### 6. Builds without Visual Studio
 
 Upstream expects VS MSBuild. This builds with the plain .NET SDK — see
 [BUILD-NOTES-MS16R7.md](BUILD-NOTES-MS16R7.md).
@@ -203,6 +313,15 @@ Two builds are published:
 
 ## Known issues
 
+- **The overlay cannot appear over exclusive-fullscreen games.** This is a
+  deliberate limitation, not a bug — see
+  [Overlay and in-game OSD](#5-overlay-and-in-game-osd).
+- **The Iris Xe reports no temperature and 0.0 W.** It has no sensor of its
+  own: it sits on the CPU die and its power is already counted in the CPU
+  package figure. The row is kept so its load, clock and memory use are visible.
+- **Framerate shows `--` unless RivaTuner Statistics Server is running.**
+  Frame rate can only be measured from inside the game's present loop, which is
+  exactly the hooking this build does not do.
 - **`yamdcc.exe -apply` silently does nothing.** The CLI pushes the IPC message
   then exits immediately; `WaitWrite()` only flushes the local write, so the
   pipe closes before the service reads it. The config is saved but never
@@ -221,7 +340,8 @@ Two builds are published:
 
 All the hard work — the EC reverse engineering, the service, the IPC layer, the
 config system — is [Sparronator9999](https://codeberg.org/Sparronator9999)'s.
-This fork fixes bugs, adds a theme, and tunes it for one laptop.
+This fork fixes bugs, adds a theme and a monitoring stack, and tunes it for one
+laptop.
 
 GPL-3.0-or-later, unchanged from upstream. Original copyright © 2023–2025
 Sparronator9999 and contributors; fork modifications © 2026 kmvishn.
