@@ -15,6 +15,7 @@
 // YAMDCC. If not, see <https://www.gnu.org/licenses/>.
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
@@ -24,6 +25,7 @@ using YAMDCC.Common;
 using YAMDCC.Common.Configs;
 using YAMDCC.Common.Dialogs;
 using YAMDCC.Common.Logs;
+using YAMDCC.Common.Monitoring;
 using YAMDCC.Common.UI;
 using YAMDCC.IPC;
 
@@ -54,6 +56,27 @@ internal sealed partial class MainForm : Form
 
     private bool GPUFan;
     private int Debug;
+
+    #region Monitoring
+    /// <summary>
+    /// Driver-free system sensors (CPU power/clock/load, per-GPU load and
+    /// VRAM, memory) shown on the Monitoring tab alongside the EC's readings.
+    /// </summary>
+    private SystemSensors Sensors;
+
+    private Label lblCpuLoad, lblCpuClock, lblCpuPkgW, lblCpuCoreW, lblRamUsed, lblSysPower;
+
+    /// <summary>
+    /// Per-GPU value labels, keyed by adapter LUID: load, VRAM, power.
+    /// </summary>
+    private readonly Dictionary<string, (Label Load, Label Vram, Label Watts)> GpuLabels = [];
+
+    /// <summary>
+    /// The Monitoring tab page. The designer keeps it as a local inside
+    /// InitializeComponent(), so it is resolved by name rather than by field.
+    /// </summary>
+    private TabPage TabMonitoring => tcMain.TabPages["tabECMon"];
+    #endregion
     #endregion
 
     public MainForm()
@@ -66,6 +89,9 @@ internal sealed partial class MainForm : Form
         // ToolTip is a component, not a child control, so it needs theming
         // separately or it pops up as a white box on the dark form.
         Theme.Apply(ttMain);
+
+        // rebuild the Monitoring tab to include the driver-free sensors
+        BuildMonitoringTab();
 
         // Set the window icon using the application icon.
         // Saves about 8-9 KB from not having to embed the same icon twice.
@@ -1183,7 +1209,163 @@ internal sealed partial class MainForm : Form
         SendSvcMessage(new ServiceCommand(Command.GetTemps));
         SendSvcMessage(new ServiceCommand(Command.GetFanSpeeds));
         SendSvcMessage(new ServiceCommand(Command.GetFanRPMs));
+        RefreshSensors();
     }
+
+    #region Monitoring tab
+    /// <summary>
+    /// Replaces the Monitoring tab's designer layout with one grouped by
+    /// device, adding the driver-free sensors to the EC's own readings.
+    /// </summary>
+    /// <remarks>
+    /// The existing EC labels are re-parented rather than replaced, so the
+    /// service's temperature/fan-speed messages keep updating them.
+    /// </remarks>
+    private void BuildMonitoringTab()
+    {
+        try { Sensors = new SystemSensors(); }
+        catch { Sensors = null; }
+
+        TableLayoutPanel t = new()
+        {
+            ColumnCount = 2,
+            Dock = DockStyle.Fill,
+            AutoScroll = true,
+            Padding = new Padding(8, 6, 8, 6),
+        };
+        t.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 170));
+        t.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+
+        int row = 0;
+
+        void Header(string text)
+        {
+            Label h = new()
+            {
+                Text = text,
+                AutoSize = true,
+                Margin = new Padding(0, row == 0 ? 0 : 10, 0, 4),
+                Font = new Font(Font, FontStyle.Bold),
+                ForeColor = Theme.Accent,
+            };
+            t.Controls.Add(h, 0, row);
+            t.SetColumnSpan(h, 2);
+            row++;
+        }
+
+        Label Row(string caption, Label value = null)
+        {
+            Label c = new()
+            {
+                Text = caption,
+                AutoSize = true,
+                Margin = new Padding(12, 2, 8, 2),
+                ForeColor = Theme.TextMuted,
+            };
+            value ??= new Label { Text = "--", AutoSize = true };
+            value.Margin = new Padding(0, 2, 0, 2);
+            t.Controls.Add(c, 0, row);
+            t.Controls.Add(value, 1, row);
+            row++;
+            return value;
+        }
+
+        // ---- CPU -----------------------------------------------------------
+        Header("CPU");
+        Row("Temperature", lblTempC);
+        lblCpuLoad = Row("Load");
+        lblCpuClock = Row("Clock");
+        lblCpuPkgW = Row("Package power");
+        lblCpuCoreW = Row("Cores power");
+        Row("Fan speed", lblFanSpdC);
+        Row("Fan RPM", lblRPM1);
+
+        // ---- GPUs ----------------------------------------------------------
+        List<GpuReading> gpus = [];
+        try { gpus = Sensors?.Read().Gpus ?? []; }
+        catch { }
+
+        foreach (GpuReading g in gpus)
+        {
+            Header(g.Name + (g.Discrete ? "  (discrete)" : "  (integrated)"));
+
+            // the EC's GPU thermal sensor and fan channel refer to the
+            // discrete GPU, so those rows only belong under it
+            if (g.Discrete)
+            {
+                Row("Temperature", lblTempG);
+                Row("Fan speed", lblFanSpdG);
+            }
+
+            Label load = Row("Load");
+            Label vram = Row("VRAM");
+            Label watts = Row("Power");
+            GpuLabels[g.Luid] = (load, vram, watts);
+        }
+
+        // ---- System --------------------------------------------------------
+        Header("System");
+        lblRamUsed = Row("Memory");
+        lblSysPower = Row("Battery draw");
+
+        TabMonitoring.Controls.Clear();
+        TabMonitoring.Controls.Add(t);
+        Theme.ApplyTo(t);
+
+        // the unused RPM slots the EC always reports are hidden by
+        // RefreshSensors() once it knows how many fans actually exist
+        foreach (Label l in new[] { lblRPM2, lblRPM3, lblRPM4 })
+        {
+            l.Visible = false;
+        }
+    }
+
+    /// <summary>
+    /// Pulls a fresh sensor snapshot into the Monitoring tab.
+    /// </summary>
+    private void RefreshSensors()
+    {
+        if (Sensors is null || tcMain.SelectedTab != TabMonitoring)
+        {
+            return;
+        }
+
+        SensorSnapshot s;
+        try { s = Sensors.Read(); }
+        catch { return; }
+
+        static string Watts(double? w) => w.HasValue ? $"{w.Value:F1} W" : "n/a";
+
+        lblCpuLoad.Text = $"{s.CpuLoadPercent:F0}%";
+        lblCpuClock.Text = s.CpuMHz > 0 ? $"{s.CpuMHz:F0} MHz" : "--";
+        lblCpuPkgW.Text = Watts(s.CpuPackageWatts);
+        lblCpuCoreW.Text = Watts(s.CpuCoresWatts);
+
+        lblRamUsed.Text = s.RamTotalMB > 0
+            ? $"{s.RamUsedMB / 1024:F1} / {s.RamTotalMB / 1024:F1} GB"
+            : "--";
+        lblSysPower.Text = s.BatteryWatts.HasValue
+            ? $"{s.BatteryWatts.Value:F1} W"
+            : "on AC";
+
+        foreach (GpuReading g in s.Gpus)
+        {
+            if (!GpuLabels.TryGetValue(g.Luid, out (Label Load, Label Vram, Label Watts) l))
+            {
+                continue;
+            }
+
+            l.Load.Text = $"{g.LoadPercent:F0}%";
+            l.Vram.Text = g.VramTotalMB > 0
+                ? $"{g.VramUsedMB:F0} / {g.VramTotalMB:F0} MB"
+                : "--";
+            // a discrete GPU has no RAPL domain; say why rather than "0 W"
+            l.Watts.Text = g.Watts.HasValue
+                ? $"{g.Watts.Value:F1} W"
+                : "n/a (needs a kernel driver)";
+        }
+    }
+    #endregion
 
     private static Label FanCurveLabel(string text, float scale, int tabIdx, ContentAlignment align = ContentAlignment.MiddleRight)
     {

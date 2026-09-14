@@ -19,6 +19,8 @@
         <Reference Include="System.Windows.Forms"/>
         <!-- needed by UI\Theme.cs (Color, Pen, SolidBrush, Rectangle) -->
         <Reference Include="System.Drawing"/>
+        <!-- needed by Monitoring\SystemSensors.cs (WMI perf classes) -->
+        <Reference Include="System.Management"/>
     </ItemGroup>
     <ItemGroup>
         <Compile Update="Dialogs\CrashDialog.cs">
