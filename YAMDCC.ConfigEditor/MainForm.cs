@@ -1364,6 +1364,7 @@ internal sealed partial class MainForm : Form
             : "--";
         List<string> src = ["Windows counters"];
         if (s.LevelZeroActive) { src.Add("Intel Level Zero"); }
+        if (s.IgclActive) { src.Add("Intel IGCL"); }
         if (s.AfterburnerActive) { src.Add("MSI Afterburner"); }
         lblSensorSrc.Text = string.Join(" + ", src) +
             (s.AfterburnerActive ? string.Empty : "  (no kernel driver)");

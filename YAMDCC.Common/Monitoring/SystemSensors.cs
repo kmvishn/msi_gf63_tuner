@@ -44,6 +44,9 @@ public sealed class GpuReading
     /// <summary>Die temperature in Celsius, when the GPU reports one.</summary>
     public double? TempC { get; set; }
 
+    /// <summary>Core voltage in volts, when the GPU reports one.</summary>
+    public double? Volts { get; set; }
+
     /// <summary><see langword="true"/> for a discrete GPU.</summary>
     public bool Discrete { get; set; }
 
@@ -99,6 +102,12 @@ public sealed class SensorSnapshot
     public double? Fps { get; set; }
 
     /// <summary>
+    /// <see langword="true"/> when the Intel Control Library supplied GPU
+    /// power telemetry. Needs no third-party tool.
+    /// </summary>
+    public bool IgclActive { get; set; }
+
+    /// <summary>
     /// <see langword="true"/> when Intel Level Zero supplied GPU telemetry.
     /// This needs no third-party tool.
     /// </summary>
@@ -152,6 +161,7 @@ public sealed class SystemSensors : IDisposable
     private List<GpuReading> _adapters = [];
     private readonly AfterburnerSensors _ab = new();
     private readonly LevelZeroSensors _ze = new();
+    private readonly IgclSensors _igcl = new();
     private bool _disposed;
 
     /// <summary>
@@ -320,6 +330,7 @@ public sealed class SystemSensors : IDisposable
         // Level Zero first: it needs no third-party tool. Afterburner then
         // fills what Level Zero cannot reach, chiefly GPU wattage.
         EnrichFromLevelZero(s);
+        EnrichFromIgcl(s);
         EnrichFromAfterburner(s);
         return s;
     }
@@ -352,6 +363,61 @@ public sealed class SystemSensors : IDisposable
                 g.MemoryMHz ??= z.MemoryMHz;
                 g.TempC ??= z.TempC;
                 break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Overlays Intel Control Library telemetry: the graphics tile's own power
+    /// and voltage, which nothing else exposes in user mode.
+    /// </summary>
+    /// <remarks>
+    /// IGCL enumerates adapters in its own order, which is not DXGI's - on the
+    /// test machine the two are reversed - and ctlGetDeviceProperties rejects
+    /// any struct size but its exact internal one, so the PCI ID cannot be read
+    /// back to match on. Instead each IGCL device is matched to the adapter
+    /// whose Level Zero core clock it reports, and anything ambiguous is
+    /// dropped rather than attributed to the wrong GPU.
+    /// </remarks>
+    private void EnrichFromIgcl(SensorSnapshot s)
+    {
+        List<IgclGpu> gpus = _igcl.Read();
+        s.IgclActive = _igcl.Available;
+        if (!_igcl.Available)
+        {
+            return;
+        }
+
+        foreach (IgclGpu ig in gpus)
+        {
+            if (!ig.CoreMHz.HasValue)
+            {
+                continue;
+            }
+
+            GpuReading match = null;
+            int matches = 0;
+            foreach (GpuReading g in s.Gpus)
+            {
+                if (g.CoreMHz.HasValue && Math.Abs(g.CoreMHz.Value - ig.CoreMHz.Value) < 1.0)
+                {
+                    match = g;
+                    matches++;
+                }
+            }
+
+            // both GPUs sitting at the same clock makes attribution a guess
+            if (matches != 1 || match is null)
+            {
+                continue;
+            }
+
+            match.Watts ??= ig.Watts;
+            match.Volts ??= ig.Volts;
+            match.TempC ??= ig.TempC;
+            if (ig.Watts.HasValue)
+            {
+                match.PowerOnCpuPackage = false;
             }
         }
     }
