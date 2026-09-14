@@ -51,11 +51,23 @@ public sealed class GpuReading
     /// Package power in watts, or <see langword="null"/> when unavailable.
     /// </summary>
     /// <remarks>
-    /// Only the integrated GPU reports power, via the CPU package's RAPL PP1
-    /// domain. A discrete GPU's power draw needs the vendor's own API (Intel
-    /// IGCL here) or ring-0 MSR access, neither of which this program uses.
+    /// Without help, only the integrated GPU reports power, via the CPU
+    /// package's RAPL PP1 domain. When MSI Afterburner is running its reading
+    /// is used instead, which also covers the discrete GPU.
     /// </remarks>
     public double? Watts { get; set; }
+
+    /// <summary>
+    /// Core clock in MHz, or <see langword="null"/>. Windows exposes no GPU
+    /// clock counter, so this is only available via MSI Afterburner.
+    /// </summary>
+    public double? CoreMHz { get; set; }
+
+    /// <summary>
+    /// <see langword="true"/> when this GPU has no power figure of its own
+    /// because it shares the CPU package's power budget.
+    /// </summary>
+    public bool PowerOnCpuPackage { get; set; }
 }
 
 /// <summary>
@@ -70,6 +82,20 @@ public sealed class SensorSnapshot
     public double RamUsedMB { get; set; }
     public double RamTotalMB { get; set; }
     public double? BatteryWatts { get; set; }
+
+    /// <summary>CPU package temperature, from Afterburner when available.</summary>
+    public double? CpuTempC { get; set; }
+
+    /// <summary>Frames per second, when RivaTuner Statistics Server is running.</summary>
+    public double? Fps { get; set; }
+
+    /// <summary>
+    /// <see langword="true"/> when MSI Afterburner's shared memory was read,
+    /// meaning the richer sensors (GPU clock/power, CPU package temperature)
+    /// are populated.
+    /// </summary>
+    public bool AfterburnerActive { get; set; }
+
     public List<GpuReading> Gpus { get; set; } = [];
 }
 
@@ -109,6 +135,7 @@ public sealed class SystemSensors : IDisposable
     private double _baseMHz;
 
     private List<GpuReading> _adapters = [];
+    private readonly AfterburnerSensors _ab = new();
     private bool _disposed;
 
     /// <summary>
@@ -272,7 +299,81 @@ public sealed class SystemSensors : IDisposable
             s.Gpus.Add(g);
         }
 
+        EnrichFromAfterburner(s);
         return s;
+    }
+
+    /// <summary>
+    /// Overlays MSI Afterburner's readings when it is running.
+    /// </summary>
+    /// <remarks>
+    /// Afterburner's RTCore64 driver reaches sensors Windows does not expose at
+    /// all: GPU core clock and power (for both adapters), CPU package
+    /// temperature, and - with RivaTuner Statistics Server - the frame rate.
+    /// Its values take precedence where they overlap, since they come from the
+    /// hardware rather than being derived.
+    /// </remarks>
+    private void EnrichFromAfterburner(SensorSnapshot s)
+    {
+        List<AbSensor> ab = _ab.Read();
+        s.AfterburnerActive = _ab.Available;
+        if (!_ab.Available)
+        {
+            return;
+        }
+
+        s.CpuTempC = AfterburnerSensors.Find(ab, "CPU temperature");
+
+        // RTSS parks Framerate at a huge sentinel when no application is
+        // hooked, which rendered as a 20-digit number. Only accept a plausible
+        // rate.
+        float? fps = AfterburnerSensors.Find(ab, "Framerate");
+        s.Fps = fps is > 0 and < 1000 ? fps : null;
+
+        float? cpuW = AfterburnerSensors.Find(ab, "CPU power");
+        if (cpuW.HasValue)
+        {
+            s.CpuPackageWatts = cpuW.Value;
+        }
+        float? cpuMHz = AfterburnerSensors.Find(ab, "CPU clock");
+        if (cpuMHz.HasValue)
+        {
+            s.CpuMHz = cpuMHz.Value;
+        }
+
+        for (int i = 0; i < s.Gpus.Count; i++)
+        {
+            uint idx = (uint)i;
+            s.Gpus[i].CoreMHz = AfterburnerSensors.FindGpu(ab, idx, "core clock");
+
+            float? w = AfterburnerSensors.FindGpu(ab, idx, "power");
+            if (w.HasValue)
+            {
+                // For an on-die GPU, Afterburner reports the whole CPU package
+                // rather than the graphics tile, so the "GPU power" row tracked
+                // CPU package watts exactly (64.1 W against 64.0 W). Showing
+                // that as integrated-GPU power is misleading, so it is dropped
+                // and the UI says the iGPU draws from the package instead.
+                bool echoesPackage = !s.Gpus[i].Discrete &&
+                    s.CpuPackageWatts.HasValue &&
+                    Math.Abs(w.Value - s.CpuPackageWatts.Value) < 1.0;
+
+                s.Gpus[i].Watts = echoesPackage ? null : w.Value;
+                s.Gpus[i].PowerOnCpuPackage = echoesPackage;
+            }
+
+            float? mem = AfterburnerSensors.FindGpu(ab, idx, "memory usage");
+            if (mem.HasValue && mem.Value > 0)
+            {
+                s.Gpus[i].VramUsedMB = mem.Value;
+            }
+
+            float? use = AfterburnerSensors.FindGpu(ab, idx, "usage");
+            if (use.HasValue && s.Gpus[i].LoadPercent <= 0)
+            {
+                s.Gpus[i].LoadPercent = use.Value;
+            }
+        }
     }
 
     #region RAPL

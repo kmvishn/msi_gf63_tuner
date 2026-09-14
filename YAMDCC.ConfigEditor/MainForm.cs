@@ -65,11 +65,12 @@ internal sealed partial class MainForm : Form
     private SystemSensors Sensors;
 
     private Label lblCpuLoad, lblCpuClock, lblCpuPkgW, lblCpuCoreW, lblRamUsed, lblSysPower;
+    private Label lblFps, lblSensorSrc;
 
     /// <summary>
     /// Per-GPU value labels, keyed by adapter LUID: load, VRAM, power.
     /// </summary>
-    private readonly Dictionary<string, (Label Load, Label Vram, Label Watts)> GpuLabels = [];
+    private readonly Dictionary<string, (Label Load, Label Clock, Label Vram, Label Watts)> GpuLabels = [];
 
     /// <summary>
     /// The Monitoring tab page. The designer keeps it as a local inside
@@ -1295,9 +1296,10 @@ internal sealed partial class MainForm : Form
             }
 
             Label load = Row("Load");
+            Label clock = Row("Core clock");
             Label vram = Row("VRAM");
             Label watts = Row("Power");
-            GpuLabels[g.Luid] = (load, vram, watts);
+            GpuLabels[g.Luid] = (load, clock, vram, watts);
         }
 
         // ---- Cooling -------------------------------------------------------
@@ -1311,6 +1313,8 @@ internal sealed partial class MainForm : Form
         Header("System");
         lblRamUsed = Row("Memory");
         lblSysPower = Row("Battery draw");
+        lblFps = Row("Framerate");
+        lblSensorSrc = Row("Sensor source");
 
         TabMonitoring.Controls.Clear();
         TabMonitoring.Controls.Add(t);
@@ -1354,10 +1358,21 @@ internal sealed partial class MainForm : Form
         lblSysPower.Text = s.BatteryWatts.HasValue
             ? $"{s.BatteryWatts.Value:F1} W"
             : "on AC";
+        lblFps.Text = s.Fps.HasValue && s.Fps.Value > 0
+            ? $"{s.Fps.Value:F0} FPS"
+            : "--";
+        lblSensorSrc.Text = s.AfterburnerActive
+            ? "Windows counters + MSI Afterburner"
+            : "Windows counters (no kernel driver)";
+
+        if (s.CpuTempC.HasValue)
+        {
+            lblTempC.Text = $"{s.CpuTempC.Value:F0}°C";
+        }
 
         foreach (GpuReading g in s.Gpus)
         {
-            if (!GpuLabels.TryGetValue(g.Luid, out (Label Load, Label Vram, Label Watts) l))
+            if (!GpuLabels.TryGetValue(g.Luid, out (Label Load, Label Clock, Label Vram, Label Watts) l))
             {
                 continue;
             }
@@ -1366,10 +1381,17 @@ internal sealed partial class MainForm : Form
             l.Vram.Text = g.VramTotalMB > 0
                 ? $"{g.VramUsedMB:F0} / {g.VramTotalMB:F0} MB"
                 : "--";
-            // a discrete GPU has no RAPL domain; say why rather than "0 W"
+            // Windows exposes no GPU clock at all, and no power for a discrete
+            // GPU: both only arrive when Afterburner is running. Say so rather
+            // than showing a misleading zero.
+            l.Clock.Text = g.CoreMHz.HasValue
+                ? $"{g.CoreMHz.Value:F0} MHz"
+                : (s.AfterburnerActive ? "idle" : "needs Afterburner");
             l.Watts.Text = g.Watts.HasValue
                 ? $"{g.Watts.Value:F1} W"
-                : "n/a (needs a kernel driver)";
+                : g.PowerOnCpuPackage
+                    ? "shared with CPU package"
+                    : (s.AfterburnerActive ? "idle" : "needs Afterburner");
         }
     }
     #endregion
