@@ -202,11 +202,11 @@ GPUs are enumerated and reported separately — the integrated Iris Xe and the
 discrete Arc A370M — alongside the CPU, the fan, memory and power state:
 
 ```
-CPU                             75 °C   100%   2091 MHz   9.5 W pkg / 7.7 W cores
-Intel Iris Xe (integrated)        --      0%    500 MHz    601 / 8043 MB    0.0 W
-Intel Arc A370M (discrete)      56 °C     0%    300 MHz     36 / 4018 MB    8.6 W
-Cooling                                  85%   4927 RPM
-System                          10.9 / 15.7 GB   on AC
+CPU                             77 °C   100%   2082 MHz   9.6 W pkg / 7.7 W cores
+Intel Iris Xe (integrated)        --      0%    550 MHz    619 / 8043 MB    0.0 W
+Intel Arc A370M (discrete)      57 °C     0%    300 MHz     36 / 4018 MB    8.6 W
+Cooling                                  85%   4306 RPM
+System                          11.4 / 15.7 GB   on AC
 ```
 
 Every value comes from an interface that is already present on the machine:
