@@ -37,7 +37,7 @@ internal static class Program
     /// The main entry point for the application.
     /// </summary>
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
@@ -138,7 +138,7 @@ internal static class Program
                             if (dlg.Result)
                             {
                                 // Start the program when the service finishes starting:
-                                Start();
+                                Start(args);
                             }
                         }
                         return;
@@ -191,7 +191,7 @@ internal static class Program
                 }
 
                 // Start the program when the service finishes starting:
-                Start();
+                Start(args);
             }
             else
             {
@@ -214,7 +214,7 @@ internal static class Program
         }
     }
 
-    private static void Start()
+    private static void Start(string[] args)
     {
         if (CommonConfig.GetECtoConfState() == ECtoConfState.PendingReboot)
         {
@@ -229,7 +229,16 @@ internal static class Program
             }
         }
 
-        Application.Run(new MainForm());
+        // --overlay / --osd turn the readouts on at startup, so a shortcut
+        // can launch straight into them without visiting the menu
+        bool overlay = false, osd = false;
+        foreach (string a in args ?? [])
+        {
+            string arg = a.TrimStart('-', '/').ToLowerInvariant();
+            if (arg == "overlay") { overlay = true; }
+            else if (arg == "osd") { osd = true; }
+        }
+        Application.Run(new MainForm(overlay, osd));
     }
 
     [DllImport("User32")]

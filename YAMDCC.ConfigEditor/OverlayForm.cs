@@ -89,7 +89,7 @@ internal sealed class OverlayForm : Form
         BackColor = Color.Black;
         TransparencyKey = Color.Black;
 
-        Size = new Size(430, 132);
+        Size = new Size(500, 132);
         Location = new Point(12, 12);
     }
 
@@ -116,39 +116,72 @@ internal sealed class OverlayForm : Form
         int y = 2;
         const int rowHeight = 21;
 
+        // Fixed columns: temperature, load, memory, clock, power. A missing
+        // value leaves its column empty rather than shifting the rest left,
+        // so the GPU, iGPU and CPU rows stay aligned with each other.
         foreach (GpuReading gpu in _snapshot.Gpus)
         {
-            List<(string Text, string Unit)> cells = [];
-            if (gpu.TempC.HasValue) { cells.Add(($"{gpu.TempC.Value:F0}", "°C")); }
-            cells.Add(($"{gpu.LoadPercent:F0}", "%"));
-            if (gpu.VramUsedMB > 0) { cells.Add(($"{gpu.VramUsedMB:F0}", "MB")); }
-            if (gpu.CoreMHz.HasValue) { cells.Add(($"{gpu.CoreMHz.Value:F0}", "MHz")); }
-            if (gpu.Watts.HasValue) { cells.Add(($"{gpu.Watts.Value:F1}", "W")); }
-
             DrawRow(g, y, gpu.Discrete ? "GPU" : "iGPU",
-                gpu.Discrete ? ColGpu : ColIGpu, cells);
+                gpu.Discrete ? ColGpu : ColIGpu,
+            [
+                Cell(gpu.TempC, "°C", "F0"),
+                Cell(gpu.LoadPercent, "%", "F0"),
+                gpu.VramUsedMB > 0 ? Cell(gpu.VramUsedMB, "MB", "F0") : null,
+                Cell(gpu.CoreMHz, "MHz", "F0"),
+                Cell(gpu.Watts, "W", "F1"),
+            ]);
             y += rowHeight;
         }
 
-        List<(string, string)> cpu = [];
-        if (_snapshot.CpuTempC.HasValue) { cpu.Add(($"{_snapshot.CpuTempC.Value:F0}", "°C")); }
-        cpu.Add(($"{_snapshot.CpuLoadPercent:F0}", "%"));
-        if (_snapshot.CpuMHz > 0) { cpu.Add(($"{_snapshot.CpuMHz:F0}", "MHz")); }
-        if (_snapshot.CpuPackageWatts.HasValue) { cpu.Add(($"{_snapshot.CpuPackageWatts.Value:F1}", "W")); }
-        DrawRow(g, y, "CPU", ColCpu, cpu);
+        DrawRow(g, y, "CPU", ColCpu,
+        [
+            Cell(_snapshot.CpuTempC, "°C", "F0"),
+            Cell(_snapshot.CpuLoadPercent, "%", "F0"),
+            null,
+            _snapshot.CpuMHz > 0 ? Cell(_snapshot.CpuMHz, "MHz", "F0") : null,
+            Cell(_snapshot.CpuPackageWatts, "W", "F1"),
+        ]);
         y += rowHeight;
 
-        DrawRow(g, y, "FAN", ColFan, [($"{FanPercent}", "%"), ($"{FanRpm}", "RPM")]);
+        DrawRow(g, y, "FAN", ColFan,
+        [
+            null,
+            Cell((double)FanPercent, "%", "F0"),
+            null,
+            Cell((double)FanRpm, "RPM", "F0"),
+            null,
+        ]);
         y += rowHeight;
 
-        DrawRow(g, y, "RAM", ColRam, [($"{_snapshot.RamUsedMB:F0}", "MB")]);
+        DrawRow(g, y, "RAM", ColRam,
+        [
+            null,
+            null,
+            Cell(_snapshot.RamUsedMB, "MB", "F0"),
+            null,
+            null,
+        ]);
         y += rowHeight;
 
         if (_snapshot.Fps.HasValue)
         {
-            DrawRow(g, y, "FPS", Color.White, [($"{_snapshot.Fps.Value:F0}", "FPS")]);
+            DrawRow(g, y, "FPS", Color.White,
+            [
+                null,
+                null,
+                null,
+                Cell(_snapshot.Fps, "FPS", "F0"),
+                null,
+            ]);
         }
     }
+
+    /// <summary>
+    /// Builds one cell, or <see langword="null"/> when the value is absent so
+    /// the column is left blank.
+    /// </summary>
+    private static (string Text, string Unit)? Cell(double? value, string unit, string format) =>
+        value.HasValue ? (value.Value.ToString(format), unit) : null;
 
     /// <summary>Fan duty, supplied by the owner from the service's readings.</summary>
     public int FanPercent { get; set; }
@@ -157,24 +190,28 @@ internal sealed class OverlayForm : Form
     public int FanRpm { get; set; }
 
     private void DrawRow(Graphics g, int y, string label, Color labelColour,
-        List<(string Text, string Unit)> cells)
+        (string Text, string Unit)?[] cells)
     {
         const int labelWidth = 52;
-        const int cellWidth = 74;
+        const int cellWidth = 78;
 
         TextRenderer.DrawText(g, label, _labelFont, new Point(4, y), labelColour,
             TextFormatFlags.NoPadding);
 
-        int x = 4 + labelWidth;
-        foreach ((string text, string unit) in cells)
+        for (int i = 0; i < cells.Length; i++)
         {
+            if (cells[i] is not (string text, string unit))
+            {
+                continue;   // column stays empty, but still occupies its slot
+            }
+
+            int x = 4 + labelWidth + (i * cellWidth);
             Size size = TextRenderer.MeasureText(g, text, _valueFont, Size.Empty,
                 TextFormatFlags.NoPadding);
             TextRenderer.DrawText(g, text, _valueFont, new Point(x, y), ColValue,
                 TextFormatFlags.NoPadding);
             TextRenderer.DrawText(g, unit, _unitFont, new Point(x + size.Width + 1, y + 4),
                 ColUnit, TextFormatFlags.NoPadding);
-            x += cellWidth;
         }
     }
 

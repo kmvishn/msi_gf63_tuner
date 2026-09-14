@@ -98,8 +98,16 @@ internal sealed partial class MainForm : Form
     #endregion
     #endregion
 
-    public MainForm()
+    /// <summary>Requested by --overlay / --osd, applied once the form loads.</summary>
+    private readonly bool StartOverlay, StartOsd;
+
+    public MainForm() : this(false, false) { }
+
+    public MainForm(bool startOverlay, bool startOsd)
     {
+        StartOverlay = startOverlay;
+        StartOsd = startOsd;
+
         InitializeComponent();
 
         // dark "MSI Dragon" theme (black + red). Must run after
@@ -228,6 +236,10 @@ internal sealed partial class MainForm : Form
 
         ttMain.SetToolTip(tbKeyLight, Strings.GetString("ttNotSupported"));
         SendSvcMessage(new ServiceCommand(Command.GetKeyLightSupported));
+
+        // honour the startup switches now the form is live
+        if (StartOverlay) { tsiOverlay.Checked = true; }
+        if (StartOsd) { tsiOsd.Checked = true; }
 
         switch (CommonConfig.GetECtoConfState())
         {
@@ -808,13 +820,8 @@ internal sealed partial class MainForm : Form
         cboProfSel.Enabled = true;
         cboProfSel.SelectedIndex = cfg.ProfSel;
 
-        // if on the EC monitoring tab
-        if (tcMain.SelectedIndex == 3)
-        {
-            tmrPoll.Stop();
-            PollEC();
-            tmrPoll.Start();
-        }
+        tmrPoll.Stop();
+        UpdatePolling();
     }
 
     private void ProfSelChanged(object sender, EventArgs e)
@@ -1394,6 +1401,7 @@ internal sealed partial class MainForm : Form
         {
             // hand the slot back so our text does not linger in the overlay
             Osd.Clear();
+            UpdatePolling();
             return;
         }
 
@@ -1409,6 +1417,7 @@ internal sealed partial class MainForm : Form
                 "RTSS not running", MessageBoxButtons.OK);
             tsiOsd.Checked = false;
         }
+        UpdatePolling();
     }
 
     private void ToggleOverlay(object sender, EventArgs e)
@@ -1422,6 +1431,7 @@ internal sealed partial class MainForm : Form
         {
             Overlay?.Hide();
         }
+        UpdatePolling();
     }
 
     /// <summary>
@@ -1473,6 +1483,32 @@ internal sealed partial class MainForm : Form
 
         int fanPct = ParseLeadingInt(lblFanSpdC.Text);
         int fanRpm = ParseLeadingInt(lblRPM1.Text);
+
+        // CpuTempC is only filled in by Afterburner, which is optional - but
+        // the EC reports CPU temperature to us regardless, via the service.
+        // Without this the overlay and the OSD showed no CPU temperature at
+        // all unless Afterburner happened to be running.
+        if (!s.CpuTempC.HasValue)
+        {
+            int ecTemp = ParseLeadingInt(lblTempC.Text);
+            if (ecTemp > 0)
+            {
+                s.CpuTempC = ecTemp;
+            }
+        }
+
+        // same for the discrete GPU, when Level Zero cannot supply one
+        foreach (GpuReading gpu in s.Gpus)
+        {
+            if (gpu.Discrete && !gpu.TempC.HasValue)
+            {
+                int ecGpu = ParseLeadingInt(lblTempG.Text);
+                if (ecGpu > 0)
+                {
+                    gpu.TempC = ecGpu;
+                }
+            }
+        }
 
         if (overlayUp)
         {
@@ -1646,7 +1682,26 @@ internal sealed partial class MainForm : Form
 
     private void tcMain_SelectedIndexChanged(object sender, EventArgs e)
     {
-        if (tcMain.SelectedIndex == 3)
+        UpdatePolling();
+    }
+
+    /// <summary>
+    /// Runs the sensor poll whenever anything needs it.
+    /// </summary>
+    /// <remarks>
+    /// This used to start the timer only on the Monitoring tab and stop it
+    /// everywhere else, which was fine when that tab was the only consumer.
+    /// The overlay and the RTSS OSD are used precisely when the window is NOT
+    /// in front, so that gating stopped feeding them the moment you switched
+    /// tabs or alt-tabbed into a game - both simply went blank.
+    /// </remarks>
+    private void UpdatePolling()
+    {
+        bool monitoring = tcMain.SelectedIndex == 3;
+        bool overlayUp = Overlay is not null && !Overlay.IsDisposed && Overlay.Visible;
+        bool osdOn = tsiOsd is not null && tsiOsd.Checked;
+
+        if (monitoring || overlayUp || osdOn)
         {
             PollEC();
             tmrPoll.Start();
