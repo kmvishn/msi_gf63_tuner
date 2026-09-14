@@ -68,6 +68,18 @@ internal sealed partial class MainForm : Form
     private Label lblFps, lblSensorSrc;
 
     /// <summary>
+    /// Whether the Monitoring tab was on screen at the previous poll, so the
+    /// power baseline can be reset when it comes back into view.
+    /// </summary>
+    private bool MonitorWasVisible;
+
+    /// <summary>The always-on-top sensor readout, when enabled.</summary>
+    private OverlayForm Overlay;
+
+    /// <summary>Menu entry that toggles <see cref="Overlay"/>.</summary>
+    private ToolStripMenuItem tsiOverlay;
+
+    /// <summary>
     /// Per-GPU value labels, keyed by adapter LUID: load, VRAM, power.
     /// </summary>
     private readonly Dictionary<string, (Label Load, Label Clock, Label Vram, Label Watts, Label Temp)> GpuLabels = [];
@@ -93,6 +105,7 @@ internal sealed partial class MainForm : Form
 
         // rebuild the Monitoring tab to include the driver-free sensors
         BuildMonitoringTab();
+        AddOverlayMenuItem();
 
         // Set the window icon using the application icon.
         // Saves about 8-9 KB from not having to embed the same icon twice.
@@ -1333,20 +1346,96 @@ internal sealed partial class MainForm : Form
     }
 
     /// <summary>
+    /// Adds the overlay toggle to the Options menu.
+    /// </summary>
+    private void AddOverlayMenuItem()
+    {
+        tsiOverlay = new ToolStripMenuItem("Show &overlay")
+        {
+            CheckOnClick = true,
+            ToolTipText = "Show a click-through readout on top of other windows. " +
+                "Works over the desktop and windowed or borderless games, but not " +
+                "over a game in exclusive fullscreen.",
+        };
+        tsiOverlay.CheckedChanged += ToggleOverlay;
+
+        // sits with the other view options
+        if (tsiOptions?.DropDownItems is not null)
+        {
+            tsiOptions.DropDownItems.Insert(0, tsiOverlay);
+            tsiOptions.DropDownItems.Insert(1, new ToolStripSeparator());
+        }
+    }
+
+    private void ToggleOverlay(object sender, EventArgs e)
+    {
+        if (tsiOverlay.Checked)
+        {
+            Overlay ??= new OverlayForm();
+            Overlay.Show();
+        }
+        else
+        {
+            Overlay?.Hide();
+        }
+    }
+
+    /// <summary>
+    /// Pulls the number off the front of a formatted label such as "43%" or
+    /// "2515 RPM", for reuse in the overlay.
+    /// </summary>
+    private static int ParseLeadingInt(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return 0;
+        }
+
+        int end = 0;
+        while (end < text.Length && char.IsDigit(text[end]))
+        {
+            end++;
+        }
+        return end == 0 ? 0 : int.Parse(text.Substring(0, end));
+    }
+
+    /// <summary>
     /// Pulls a fresh sensor snapshot into the Monitoring tab.
     /// </summary>
     private void RefreshSensors()
     {
-        if (Sensors is null || tcMain.SelectedTab != TabMonitoring)
+        bool tabVisible = tcMain.SelectedTab == TabMonitoring;
+        bool overlayUp = Overlay is not null && !Overlay.IsDisposed && Overlay.Visible;
+
+        if (Sensors is null || (!tabVisible && !overlayUp))
         {
+            MonitorWasVisible = false;
             return;
         }
 
         SensorSnapshot s;
-        try { s = Sensors.Read(); }
+        try
+        {
+            // SystemSensors enforces its own minimum energy window, so no
+            // priming read is needed here - one would only restart that
+            // window and delay the first real figure.
+            MonitorWasVisible = true;
+            s = Sensors.Read();
+        }
         catch { return; }
 
         static string Watts(double? w) => w.HasValue ? $"{w.Value:F1} W" : "n/a";
+
+        if (!tabVisible)
+        {
+            if (overlayUp)
+            {
+                Overlay.FanPercent = ParseLeadingInt(lblFanSpdC.Text);
+                Overlay.FanRpm = ParseLeadingInt(lblRPM1.Text);
+                Overlay.Update(s);
+            }
+            return;
+        }
 
         lblCpuLoad.Text = $"{s.CpuLoadPercent:F0}%";
         lblCpuClock.Text = s.CpuMHz > 0 ? $"{s.CpuMHz:F0} MHz" : "--";

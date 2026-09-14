@@ -154,6 +154,24 @@ public sealed class SystemSensors : IDisposable
 
     private readonly Dictionary<string, (double Energy, double Time)> _lastEnergy = [];
 
+    /// <summary>
+    /// Last good wattage per RAPL domain, held while a new sample accumulates.
+    /// </summary>
+    private readonly Dictionary<string, double> _lastWatts = [];
+
+    /// <summary>
+    /// Shortest energy window that yields a correct figure, in counter
+    /// milliseconds.
+    /// </summary>
+    /// <remarks>
+    /// The Energy Meter counter only advances about once a second, so a
+    /// shorter window catches a partial update and under-reports badly -
+    /// measured 7.0 W over 250 ms against 16.8 W over 1000 ms for the same
+    /// load. Sampling on a 1 s timer sat right on that boundary, so ordinary
+    /// timer jitter was enough to produce the wrong answer.
+    /// </remarks>
+    private const double MinEnergyWindowMs = 900;
+
     private PerformanceCounter _cpuLoad, _cpuPerf, _ramAvail;
     private double _ramTotalMB;
     private double _baseMHz;
@@ -535,6 +553,15 @@ public sealed class SystemSensors : IDisposable
 
             double dE = energy - prev.Energy;
             double dT = time - prev.Time;
+
+            // Not enough counter time has passed for a trustworthy figure:
+            // keep the baseline where it is so the window keeps growing, and
+            // report the last good value rather than a wrong one.
+            if (dT < MinEnergyWindowMs)
+            {
+                return _lastWatts.TryGetValue(instance, out double held) ? held : null;
+            }
+
             _lastEnergy[instance] = (energy, time);
 
             if (dT <= 0 || dE < 0)
@@ -553,7 +580,13 @@ public sealed class SystemSensors : IDisposable
 
             // a counter wrap or a stall produces nonsense; drop it rather than
             // display a spike
-            return watts is >= 0 and < 400 ? watts : null;
+            if (watts is < 0 or >= 400)
+            {
+                return null;
+            }
+
+            _lastWatts[instance] = watts;
+            return watts;
         }
         catch
         {
