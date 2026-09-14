@@ -70,7 +70,7 @@ internal sealed partial class MainForm : Form
     /// <summary>
     /// Per-GPU value labels, keyed by adapter LUID: load, VRAM, power.
     /// </summary>
-    private readonly Dictionary<string, (Label Load, Label Clock, Label Vram, Label Watts)> GpuLabels = [];
+    private readonly Dictionary<string, (Label Load, Label Clock, Label Vram, Label Watts, Label Temp)> GpuLabels = [];
 
     /// <summary>
     /// The Monitoring tab page. The designer keeps it as a local inside
@@ -1295,11 +1295,12 @@ internal sealed partial class MainForm : Form
                 Row("Temperature", lblTempG);
             }
 
+            Label gpuTemp = g.Discrete ? null : Row("Temperature");
             Label load = Row("Load");
             Label clock = Row("Core clock");
             Label vram = Row("VRAM");
             Label watts = Row("Power");
-            GpuLabels[g.Luid] = (load, clock, vram, watts);
+            GpuLabels[g.Luid] = (load, clock, vram, watts, gpuTemp ?? lblTempG);
         }
 
         // ---- Cooling -------------------------------------------------------
@@ -1361,9 +1362,11 @@ internal sealed partial class MainForm : Form
         lblFps.Text = s.Fps.HasValue && s.Fps.Value > 0
             ? $"{s.Fps.Value:F0} FPS"
             : "--";
-        lblSensorSrc.Text = s.AfterburnerActive
-            ? "Windows counters + MSI Afterburner"
-            : "Windows counters (no kernel driver)";
+        List<string> src = ["Windows counters"];
+        if (s.LevelZeroActive) { src.Add("Intel Level Zero"); }
+        if (s.AfterburnerActive) { src.Add("MSI Afterburner"); }
+        lblSensorSrc.Text = string.Join(" + ", src) +
+            (s.AfterburnerActive ? string.Empty : "  (no kernel driver)");
 
         if (s.CpuTempC.HasValue)
         {
@@ -1372,7 +1375,7 @@ internal sealed partial class MainForm : Form
 
         foreach (GpuReading g in s.Gpus)
         {
-            if (!GpuLabels.TryGetValue(g.Luid, out (Label Load, Label Clock, Label Vram, Label Watts) l))
+            if (!GpuLabels.TryGetValue(g.Luid, out (Label Load, Label Clock, Label Vram, Label Watts, Label Temp) l))
             {
                 continue;
             }
@@ -1385,8 +1388,17 @@ internal sealed partial class MainForm : Form
             // GPU: both only arrive when Afterburner is running. Say so rather
             // than showing a misleading zero.
             l.Clock.Text = g.CoreMHz.HasValue
-                ? $"{g.CoreMHz.Value:F0} MHz"
-                : (s.AfterburnerActive ? "idle" : "needs Afterburner");
+                ? (g.MemoryMHz.HasValue
+                    ? $"{g.CoreMHz.Value:F0} MHz   (mem {g.MemoryMHz.Value:F0} MHz)"
+                    : $"{g.CoreMHz.Value:F0} MHz")
+                : "--";
+
+            // Level Zero reports the die temperature even when the card is
+            // parked, where the EC's GPU sensor just reads 0.
+            if (g.TempC.HasValue && l.Temp is not null)
+            {
+                l.Temp.Text = $"{g.TempC.Value:F0}°C";
+            }
             l.Watts.Text = g.Watts.HasValue
                 ? $"{g.Watts.Value:F1} W"
                 : g.PowerOnCpuPackage

@@ -38,6 +38,9 @@ internal static class Dxgi
         public string Name { get; set; }
         public string Luid { get; set; }
 
+        /// <summary>PCI device ID, e.g. 0x5693 for an Arc A370M.</summary>
+        public uint DeviceId { get; set; }
+
         /// <summary>On-board VRAM. Near zero for an integrated GPU.</summary>
         public long DedicatedVideoMemory { get; set; }
 
@@ -152,6 +155,7 @@ internal static class Dxgi
                     {
                         Name = desc.Description?.Trim(),
                         Luid = $"luid_0x{desc.AdapterLuid.HighPart:X8}_0x{desc.AdapterLuid.LowPart:X8}",
+                        DeviceId = desc.DeviceId,
                         DedicatedVideoMemory = desc.DedicatedVideoMemory.ToInt64(),
                         SharedSystemMemory = desc.SharedSystemMemory.ToInt64(),
                     });

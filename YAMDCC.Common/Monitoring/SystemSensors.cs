@@ -35,6 +35,15 @@ public sealed class GpuReading
     /// <summary>Perf-counter LUID key, e.g. <c>luid_0x00000000_0x0000F5DF</c>.</summary>
     public string Luid { get; set; }
 
+    /// <summary>PCI device ID, used to match Level Zero's device list.</summary>
+    public uint DeviceId { get; set; }
+
+    /// <summary>Memory clock in MHz, where the adapter has its own memory.</summary>
+    public double? MemoryMHz { get; set; }
+
+    /// <summary>Die temperature in Celsius, when the GPU reports one.</summary>
+    public double? TempC { get; set; }
+
     /// <summary><see langword="true"/> for a discrete GPU.</summary>
     public bool Discrete { get; set; }
 
@@ -90,6 +99,12 @@ public sealed class SensorSnapshot
     public double? Fps { get; set; }
 
     /// <summary>
+    /// <see langword="true"/> when Intel Level Zero supplied GPU telemetry.
+    /// This needs no third-party tool.
+    /// </summary>
+    public bool LevelZeroActive { get; set; }
+
+    /// <summary>
     /// <see langword="true"/> when MSI Afterburner's shared memory was read,
     /// meaning the richer sensors (GPU clock/power, CPU package temperature)
     /// are populated.
@@ -136,6 +151,7 @@ public sealed class SystemSensors : IDisposable
 
     private List<GpuReading> _adapters = [];
     private readonly AfterburnerSensors _ab = new();
+    private readonly LevelZeroSensors _ze = new();
     private bool _disposed;
 
     /// <summary>
@@ -232,6 +248,7 @@ public sealed class SystemSensors : IDisposable
                 {
                     Name = a.Name,
                     Luid = a.Luid,
+                    DeviceId = a.DeviceId,
                     // an integrated GPU carves a small aperture out of system
                     // RAM; a discrete card reports its own large pool
                     Discrete = discrete,
@@ -286,6 +303,7 @@ public sealed class SystemSensors : IDisposable
             {
                 Name = a.Name,
                 Luid = a.Luid,
+                DeviceId = a.DeviceId,
                 Discrete = a.Discrete,
                 VramTotalMB = a.VramTotalMB,
                 // only the iGPU has a RAPL domain
@@ -299,8 +317,43 @@ public sealed class SystemSensors : IDisposable
             s.Gpus.Add(g);
         }
 
+        // Level Zero first: it needs no third-party tool. Afterburner then
+        // fills what Level Zero cannot reach, chiefly GPU wattage.
+        EnrichFromLevelZero(s);
         EnrichFromAfterburner(s);
         return s;
+    }
+
+    /// <summary>
+    /// Overlays Intel Level Zero's readings: GPU clocks and discrete-GPU
+    /// temperature, neither of which Windows exposes, with no extra software.
+    /// </summary>
+    private void EnrichFromLevelZero(SensorSnapshot s)
+    {
+        List<ZeGpu> gpus = _ze.Read();
+        s.LevelZeroActive = _ze.Available;
+        if (!_ze.Available)
+        {
+            return;
+        }
+
+        foreach (ZeGpu z in gpus)
+        {
+            foreach (GpuReading g in s.Gpus)
+            {
+                // match on PCI device ID rather than list order, which Level
+                // Zero and DXGI do not necessarily agree on
+                if (g.DeviceId != z.DeviceId)
+                {
+                    continue;
+                }
+
+                g.CoreMHz ??= z.CoreMHz;
+                g.MemoryMHz ??= z.MemoryMHz;
+                g.TempC ??= z.TempC;
+                break;
+            }
+        }
     }
 
     /// <summary>
