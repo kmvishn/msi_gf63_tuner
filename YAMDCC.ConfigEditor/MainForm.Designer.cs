@@ -483,17 +483,18 @@ namespace YAMDCC.ConfigEditor
             // 
             // tblFanControl
             // 
-            this.tblFanControl.ColumnCount = 8;
+            // NOTE: was 8 columns; the last two held a per-profile "Perf. mode"
+            // selector that duplicated the global one on the Extras tab, so it
+            // was removed. cboProfPerfMode still exists as an object because the
+            // config's per-profile PerfMode is still read and written - it just
+            // is not shown.
+            this.tblFanControl.ColumnCount = 6;
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
-            this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
-            this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
-            this.tblFanControl.Controls.Add(this.cboProfPerfMode, 6, 0);
-            this.tblFanControl.Controls.Add(lblProfPerfMode, 5, 0);
             this.tblFanControl.Controls.Add(this.btnProfDel, 4, 0);
             this.tblFanControl.Controls.Add(this.btnProfAdd, 3, 0);
             this.tblFanControl.Controls.Add(this.cboProfSel, 2, 0);
@@ -584,7 +585,7 @@ namespace YAMDCC.ConfigEditor
             // 
             this.tblCurve.AutoSize = true;
             this.tblCurve.ColumnCount = 1;
-            this.tblFanControl.SetColumnSpan(this.tblCurve, 7);
+            this.tblFanControl.SetColumnSpan(this.tblCurve, 6);
             this.tblCurve.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblCurve.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 20F));
             this.tblCurve.Dock = System.Windows.Forms.DockStyle.Fill;
