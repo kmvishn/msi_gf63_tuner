@@ -79,6 +79,12 @@ internal sealed partial class MainForm : Form
     /// <summary>Menu entry that toggles <see cref="Overlay"/>.</summary>
     private ToolStripMenuItem tsiOverlay;
 
+    /// <summary>Publishes readings into RivaTuner Statistics Server's OSD.</summary>
+    private readonly RtssOsd Osd = new();
+
+    /// <summary>Menu entry that toggles the RTSS in-game OSD.</summary>
+    private ToolStripMenuItem tsiOsd;
+
     /// <summary>
     /// Per-GPU value labels, keyed by adapter LUID: load, VRAM, power.
     /// </summary>
@@ -239,6 +245,11 @@ internal sealed partial class MainForm : Form
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
         base.OnFormClosing(e);
+
+        // hand the RTSS slot back and drop the overlay, so neither outlives
+        // the program
+        Osd.Clear();
+        Overlay?.Close();
         // Disable Full Blast if it was enabled while the program
         // was running and the user wants it disabled on exit:
         if (chkFullBlast.Checked && CommonConfig.GetDisableFBOnExit())
@@ -1359,11 +1370,44 @@ internal sealed partial class MainForm : Form
         };
         tsiOverlay.CheckedChanged += ToggleOverlay;
 
+        tsiOsd = new ToolStripMenuItem("Show in-&game OSD (RTSS)")
+        {
+            CheckOnClick = true,
+            ToolTipText = "Send these readings to RivaTuner Statistics Server, which " +
+                "draws them inside the game - including in exclusive fullscreen, " +
+                "where a normal window cannot appear. Requires RTSS to be running.",
+        };
+        tsiOsd.CheckedChanged += ToggleOsd;
+
         // sits with the other view options
         if (tsiOptions?.DropDownItems is not null)
         {
             tsiOptions.DropDownItems.Insert(0, tsiOverlay);
-            tsiOptions.DropDownItems.Insert(1, new ToolStripSeparator());
+            tsiOptions.DropDownItems.Insert(1, tsiOsd);
+            tsiOptions.DropDownItems.Insert(2, new ToolStripSeparator());
+        }
+    }
+
+    private void ToggleOsd(object sender, EventArgs e)
+    {
+        if (!tsiOsd.Checked)
+        {
+            // hand the slot back so our text does not linger in the overlay
+            Osd.Clear();
+            return;
+        }
+
+        if (!Osd.Write("msi_gf63_tuner starting..."))
+        {
+            // ShowWarning here would offer Yes/No, which makes no sense for a
+            // statement of fact; ShowInfo defaults to a single OK button.
+            Utils.ShowInfo(
+                "Could not reach RivaTuner Statistics Server." +
+                Environment.NewLine + Environment.NewLine +
+                "RTSS must be running for the in-game OSD. It is installed " +
+                "alongside MSI Afterburner, or separately from guru3d.com.",
+                "RTSS not running", MessageBoxButtons.OK);
+            tsiOsd.Checked = false;
         }
     }
 
@@ -1406,8 +1450,9 @@ internal sealed partial class MainForm : Form
     {
         bool tabVisible = tcMain.SelectedTab == TabMonitoring;
         bool overlayUp = Overlay is not null && !Overlay.IsDisposed && Overlay.Visible;
+        bool osdOn = tsiOsd is not null && tsiOsd.Checked;
 
-        if (Sensors is null || (!tabVisible && !overlayUp))
+        if (Sensors is null || (!tabVisible && !overlayUp && !osdOn))
         {
             MonitorWasVisible = false;
             return;
@@ -1426,14 +1471,23 @@ internal sealed partial class MainForm : Form
 
         static string Watts(double? w) => w.HasValue ? $"{w.Value:F1} W" : "n/a";
 
+        int fanPct = ParseLeadingInt(lblFanSpdC.Text);
+        int fanRpm = ParseLeadingInt(lblRPM1.Text);
+
+        if (overlayUp)
+        {
+            Overlay.FanPercent = fanPct;
+            Overlay.FanRpm = fanRpm;
+            Overlay.Update(s);
+        }
+
+        if (osdOn)
+        {
+            Osd.Write(RtssOsd.Format(s, fanPct, fanRpm));
+        }
+
         if (!tabVisible)
         {
-            if (overlayUp)
-            {
-                Overlay.FanPercent = ParseLeadingInt(lblFanSpdC.Text);
-                Overlay.FanRpm = ParseLeadingInt(lblRPM1.Text);
-                Overlay.Update(s);
-            }
             return;
         }
 
