@@ -1,4 +1,4 @@
-// This file is part of YAMDCC (Yet Another MSI Dragon Center Clone).
+﻿// This file is part of YAMDCC (Yet Another MSI Dragon Center Clone).
 // Copyright © Sparronator9999 and Contributors 2023-2025.
 //
 // YAMDCC is free software: you can redistribute it and/or modify it
@@ -491,10 +491,14 @@ namespace YAMDCC.ConfigEditor
             this.tblFanControl.ColumnCount = 6;
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            // NOTE: the profile selector is a fixed width and all of the free
+            // width goes to the trailing spacer. Giving the selector the slack
+            // instead pushed the +/- buttons that follow it off the right edge
+            // of the window, and stretched the combo box across the form.
+            this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
-            this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
-            this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblFanControl.Controls.Add(this.btnProfDel, 4, 0);
             this.tblFanControl.Controls.Add(this.btnProfAdd, 3, 0);
             this.tblFanControl.Controls.Add(this.cboProfSel, 2, 0);
@@ -560,12 +564,12 @@ namespace YAMDCC.ConfigEditor
             // 
             // cboProfSel
             // 
-            this.cboProfSel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.cboProfSel.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.cboProfSel.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cboProfSel.FormattingEnabled = true;
             this.cboProfSel.Location = new System.Drawing.Point(131, 3);
             this.cboProfSel.Name = "cboProfSel";
-            this.cboProfSel.Size = new System.Drawing.Size(134, 23);
+            this.cboProfSel.Size = new System.Drawing.Size(220, 23);
             this.cboProfSel.TabIndex = 3;
             this.cboProfSel.SelectedIndexChanged += new System.EventHandler(this.ProfSelChanged);
             // 
