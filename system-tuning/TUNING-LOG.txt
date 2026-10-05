@@ -1,0 +1,580 @@
+===============================================================================
+ SYSTEM TUNING LOG  --  DARK-ENGINE
+===============================================================================
+ Machine     : MSI Thin GF63 12HW
+ CPU         : Intel Core i5-12500H  (12C/16T = 4P + 8E, base 1.7 GHz)
+ RAM         : 16 GB DDR4-3200, dual channel (Samsung 8GB + A-DATA 8GB)
+ Storage     : WDC PC SN540 512GB NVMe (DRAM-less, uses Host Memory Buffer)
+ GPU         : Intel Iris Xe (active) + Intel Arc A370M (DISABLED, code 22)
+ Display     : 1920x1080 @ 144 Hz
+ OS          : Windows 11 Home Single Language, build 10.0.26200
+ BIOS        : American Megatrends E16R7IMS.10F (2025-09-02)
+
+ Applied     : 2026-09-13
+ Applied by  : Claude Opus 5 (elevated PowerShell) + user (BIOS / Wi-Fi)
+
+ COMPANION FILES (same folder):
+   verify-tuning.ps1   - checks every item below, prints OK / DRIFTED
+   reapply-tuning.ps1  - re-applies anything that got reset (idempotent)
+
+ QUICK USE:
+   Check what drifted   ->  powershell -ExecutionPolicy Bypass -File verify-tuning.ps1
+   Fix what drifted     ->  right-click reapply-tuning.ps1 -> Run as administrator
+
+
+===============================================================================
+ SECTION 1 -- CHANGES APPLIED  (9 items)
+===============================================================================
+
+-------------------------------------------------------------------------------
+ [1] PAGEFILE -- fixed commit-limit exhaustion
+-------------------------------------------------------------------------------
+ PROBLEM   16 GB RAM + only a 1 GB pagefile = 16.71 GB commit limit, with just
+           4.76 GB free while WSL2 is configured for 12 GB + 4 GB swap. WSL
+           spinning up could exhaust commit -> allocation failures, not just
+           slowdown.
+
+ BEFORE    AutomaticManagedPagefile = True
+           C:\pagefile.sys  system-managed, 1024 MB allocated
+ AFTER     AutomaticManagedPagefile = False
+           C:\pagefile.sys  InitialSize 4096 MB / MaximumSize 16384 MB
+
+ NOTE      *** REQUIRES A REBOOT to actually resize the file. ***
+           The registry entry is durable immediately; the file is not.
+
+ REAPPLY (elevated PowerShell)
+   $cs = Get-CimInstance Win32_ComputerSystem
+   Set-CimInstance -InputObject $cs -Property @{AutomaticManagedPagefile=$false}
+   $pf = Get-CimInstance Win32_PageFileSetting
+   Set-CimInstance -InputObject $pf -Property @{InitialSize=4096; MaximumSize=16384}
+
+ VERIFY
+   Get-CimInstance Win32_PageFileSetting | Select Name,InitialSize,MaximumSize
+   (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management').PagingFiles
+   EXPECT: C:\pagefile.sys 4096 16384
+
+ REVERT
+   Set-CimInstance -InputObject (Get-CimInstance Win32_ComputerSystem) `
+     -Property @{AutomaticManagedPagefile=$true}
+
+
+-------------------------------------------------------------------------------
+ [2] MAX PROCESSOR STATE -- removed artificial 99% frequency ceiling
+-------------------------------------------------------------------------------
+ PROBLEM   Max processor state on AC was 99%. Windows default is 100%; 99% is
+           the legacy trick used to suppress Turbo Boost. On Alder Lake with
+           HWP it does not fully disable turbo, but it hands the scheduler a
+           ceiling that should not be there.
+
+ BEFORE    PROCTHROTTLEMAX  AC = 0x63 (99%)   DC = 0x50 (80%)
+ AFTER     PROCTHROTTLEMAX  AC = 0x64 (100%)  DC = 0x50 (80%)  <- DC unchanged
+
+ SAFETY    No added thermal risk. PL1/PL2 (item 9) are the real governor of
+           power draw; this only removes a frequency cap sitting above them.
+           Measured effect: peak all-core went to 3529 MHz.
+
+ REAPPLY (elevated)
+   powercfg /setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PROCTHROTTLEMAX 100
+   powercfg /setactive SCHEME_CURRENT
+
+ VERIFY
+   powercfg /query SCHEME_CURRENT SUB_PROCESSOR PROCTHROTTLEMAX
+   EXPECT: Current AC Power Setting Index: 0x00000064
+
+ REVERT
+   powercfg /setacvalueindex SCHEME_CURRENT SUB_PROCESSOR PROCTHROTTLEMAX 99
+   powercfg /setactive SCHEME_CURRENT
+
+
+-------------------------------------------------------------------------------
+ [3] FAST STARTUP (hiberboot) -- disabled
+-------------------------------------------------------------------------------
+ PROBLEM   HiberbootEnabled was 1 while hibernation was off and no hiberfil.sys
+           existed. The flag was inert but misleading.
+
+ BEFORE    HiberbootEnabled = 1   (hibernation off, no hiberfil.sys)
+ AFTER     HiberbootEnabled = 0   (hibernation off, no hiberfil.sys)
+
+ NOTE      This machine only supports S0 Modern Standby. S3 and Hibernate are
+           unavailable. If you ever want hibernate back: powercfg /h on
+
+ REAPPLY (elevated)
+   Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power' `
+     -Name HiberbootEnabled -Value 0 -Type DWord
+   powercfg /h off
+
+ VERIFY
+   (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power').HiberbootEnabled
+   EXPECT: 0
+
+
+-------------------------------------------------------------------------------
+ [4] IP HELPER SERVICE -- re-enabled  (ROOT CAUSE of Tailscale boot failures)
+-------------------------------------------------------------------------------
+ PROBLEM   iphlpsvc was set to Disabled -- a debloat casualty. Tailscale
+           requires IP Helper for its TUN adapter, so it failed EVERY boot:
+             Event 7001  "The Tailscale service depends on the IP Helper
+                          service which failed to start"
+             Event 7031  "The Tailscale service terminated unexpectedly"
+           This was NOT a service start-order race, which is what it looked
+           like at first. The dependency simply could not start.
+
+ BEFORE    iphlpsvc   StartType = Disabled   Status = Stopped
+           Tailscale  failing at every boot
+ AFTER     iphlpsvc   StartType = Automatic  Status = Running
+           Tailscale  StartType = Automatic  Status = Running
+
+ IMPORTANT If you ever re-run a debloat script that disables IP Helper,
+           Tailscale WILL break again. This is the most likely item to regress.
+
+ REAPPLY (elevated)
+   Set-Service iphlpsvc -StartupType Automatic
+   Start-Service iphlpsvc
+   Restart-Service Tailscale -Force
+
+ VERIFY
+   Get-Service iphlpsvc,Tailscale | Select Name,Status,StartType
+   EXPECT: both Running / Automatic
+
+
+-------------------------------------------------------------------------------
+ [5] VOLUME SHADOW COPY STORAGE -- System Restore made functional
+-------------------------------------------------------------------------------
+ PROBLEM   Event 36 (Volsnap): "shadow copies of volume C: were aborted because
+           the shadow copy storage could not grow". No working restore points.
+
+ BEFORE    Max shadow storage on C: = 9.52 GB (1%), System Restore not enabled
+ AFTER     Max shadow storage on C: = 10.0 GB (2%), System Restore enabled
+
+ WHY       Worth having before the Arc GPU driver reinstall (see Section 3).
+
+ REAPPLY (elevated)
+   Enable-ComputerRestore -Drive "C:\"
+   vssadmin resize shadowstorage /for=C: /on=C: /maxsize=10GB
+
+ VERIFY
+   vssadmin list shadowstorage
+   EXPECT: Maximum Shadow Copy Storage space: 10.0 GB
+
+
+-------------------------------------------------------------------------------
+ [6] INTEL COMPUTING IMPROVEMENT PROGRAM -- uninstalled
+-------------------------------------------------------------------------------
+ PROBLEM   esrv.exe + esrv_svc.exe were holding ~345 MB for a telemetry survey
+           program. Not a driver, no functional role.
+
+ BEFORE    Intel(R) Computing Improvement Program 2.4.11225 installed
+           esrv_svc 204.9 MB + esrv 138.0 MB resident
+ AFTER     Uninstalled. 0 esrv processes.
+
+ PRODUCT   MSI GUID {F2D45F25-BE06-4324-AC99-426FAF9B2E63}
+
+ REAPPLY   Nothing to do unless it returns (it can come back via Intel DSA or a
+           manual Intel driver bundle install). To remove again:
+   msiexec /x {F2D45F25-BE06-4324-AC99-426FAF9B2E63} /qn /norestart
+
+ VERIFY
+   Get-Process esrv,esrv_svc -ErrorAction SilentlyContinue
+   EXPECT: no output
+
+ NOT REMOVED (deliberately): MSI Center / MSI Foundation Service / Micro Star
+   SCM. These provide fan-curve control, which matters on this thin chassis.
+
+
+-------------------------------------------------------------------------------
+ [7] WINDOWS DEFENDER EXCLUSIONS -- build caches
+-------------------------------------------------------------------------------
+ PRE-EXISTING (you already had these)
+   %USERPROFILE%\AndroidStudioProjects\<project>
+   %USERPROFILE%\AppData\Local\Android\Sdk
+   %USERPROFILE%\AppData\Local\Google\AndroidStudio2025.3.2
+   %USERPROFILE%\.gradle
+ ADDED
+   %USERPROFILE%\.android
+
+ TRADEOFF  Excluded paths are not scanned in real time. Scope was kept to build
+           caches only; source directories are still scanned.
+
+ REAPPLY (elevated)
+   Add-MpPreference -ExclusionPath "$env:USERPROFILE\.gradle"
+   Add-MpPreference -ExclusionPath "$env:USERPROFILE\.android"
+
+ VERIFY (must be elevated, otherwise it prints a placeholder string)
+   (Get-MpPreference).ExclusionPath
+
+ REVERT
+   Remove-MpPreference -ExclusionPath "$env:USERPROFILE\.android"
+
+
+-------------------------------------------------------------------------------
+ [8] CROSS-DEVICE RESUME -- disabled            *** LEAST DURABLE ITEM ***
+-------------------------------------------------------------------------------
+ WHAT      Windows 11 feature that hands off activity from phone / OneDrive.
+
+ BEFORE    IsResumeAllowed = 1, IsOneDriveResumeAllowed = 1
+ AFTER     IsResumeAllowed = 0, IsOneDriveResumeAllowed = 0
+
+ WARNING   This key also carries PauseFeatureExpiryDate = 2026-09-19T17:00:44Z,
+           a separate built-in pause mechanism. HKCU shell-feature preferences
+           like this can be re-asserted by Windows feature updates. Of all the
+           items here, this is the one most likely to silently revert.
+           RE-CHECK THIS ONE AFTER 2026-09-19.
+
+ REAPPLY (normal user, NOT elevated -- it is HKCU)
+   $k='HKCU:\Software\Microsoft\Windows\CurrentVersion\CrossDeviceResume\Configuration'
+   Set-ItemProperty $k -Name IsResumeAllowed -Value 0 -Type DWord
+   Set-ItemProperty $k -Name IsOneDriveResumeAllowed -Value 0 -Type DWord
+
+ VERIFY
+   Get-ItemProperty $k | Select IsResumeAllowed,IsOneDriveResumeAllowed
+   EXPECT: 0 and 0
+
+
+-------------------------------------------------------------------------------
+ [9] WI-FI MIMO POWER SAVE -- disabled          (applied by user)
+-------------------------------------------------------------------------------
+ PROBLEM   Auto SMPS (Spatial Multiplexing Power Save) lets the 2x2 AX201 shut
+           down receive chains when idle, dropping to 1x1 until it ramps back.
+           Costs latency on first packets after idle -- exactly the pattern for
+           SSH, git fetch and Tailscale.
+
+ BEFORE    MIMOPowerSaveMode = Auto SMPS
+ AFTER     MIMOPowerSaveMode = 3  (No SMPS)
+
+ PERSISTENCE  CONFIRMED durable. Value verified present in ControlSet001, the
+           on-disk hive -- not just the volatile CurrentControlSet pointer.
+           Survives reboot, sleep, and adapter disable/enable.
+           WILL be reset by: Wi-Fi driver update or reinstall, "uninstall
+           device + delete driver software", or Settings -> Network reset.
+           Intel DSAService and DSAUpdateService are both Disabled on this
+           machine, so nothing will push a driver silently.
+
+ DRIVER AT TIME OF CHANGE: Intel Wi-Fi 6 AX201 160MHz, ver 24.70.0.3,
+           dated 2026-07-29, oem103.inf
+
+ REAPPLY (elevated)
+   Set-NetAdapterAdvancedProperty -Name WiFi `
+     -DisplayName 'MIMO Power Save Mode' -DisplayValue 'No SMPS'
+
+ VERIFY
+   Get-NetAdapterAdvancedProperty -Name WiFi -AllProperties |
+     Where RegistryKeyword -eq 'MIMOPowerSaveMode' | Select DisplayValue,RegistryValue
+   EXPECT: No SMPS / 3
+
+ ALREADY CORRECT, no action needed (recorded for reference):
+   Transmit Power              5. Highest
+   U-APSD support              Disabled
+   Sleep on WoWLAN Disconnect  Disabled
+   Power plan wireless AC      0x0 = Maximum Performance
+
+
+===============================================================================
+ SECTION 2 -- FILES DELETED  (2026-09-13, ~207 MB freed)
+===============================================================================
+ Removed from %USERPROFILE%\ :
+   .cline  .codex  .vibe  .cursor  .windsurf  .codeium
+
+ Cursor, Windsurf and Codeium had NO uninstall registry entries -- these were
+ orphaned leftovers, nothing was broken.
+
+ .gemini was PARTIALLY pruned. Deleted: config, history, tmp, installation_id,
+ projects.json.  KEPT (39.5 MB):
+   .gemini\antigravity
+   .gemini\antigravity-backup
+   .gemini\antigravity-ide      <- last written 2026-08-16
+
+ REASON FOR KEEPING: Antigravity IDE 2.5.5 is still installed and this is its
+ data. .antigravity (258 MB) and .antigravity-ide (414 MB) were also kept.
+ To finish removing it later:   rm -rf "$env:USERPROFILE\.gemini"
+
+
+===============================================================================
+ SECTION 3 -- NOT APPLIED  (open items, ranked)
+===============================================================================
+
+ HIGH VALUE
+ ----------
+ (a) ARC A370M dGPU IS DISABLED  -- problem code 22 = CM_PROB_DISABLED.
+     Not failed; deliberately switched off. You are running on Iris Xe only.
+     Root cause is visible in mismatched driver versions -- Intel ships ONE
+     unified driver for both adapters:
+        Iris Xe  32.0.101.7088  (2026-06-17)
+        Arc      32.0.101.8993  (2026-09-10)
+     FIX: DDU in safe mode, clean-install the unified Intel Arc + Iris Xe
+     driver, then:
+        pnputil /enable-device "PCI\VEN_8086&DEV_5693&SUBSYS_138F1462&REV_05\<device-instance-id>"
+
+ (b) WI-FI IS ON THE 2.4 GHz BAND. SSID "<your-SSID>", steady 400 Mbps --
+     which is exactly 2x2 802.11ax on 2.4 GHz / 40 MHz. On 5 GHz / 80 MHz the
+     same card should negotiate ~1200 Mbps. Worth roughly 3x throughput.
+     (Inferred from SSID name + link rate; Location Services is off so
+      netsh wlan cannot report the band directly.)
+     FIX: connect to the 5 GHz SSID, or:
+        Set-NetAdapterAdvancedProperty -Name WiFi `
+          -DisplayName 'Preferred Band' -DisplayValue '3. Prefer 5GHz band'
+
+ (c) RAM IS THE REAL BOTTLENECK. 16 GB with ~8 GB of process memory, of which
+     the AI agents alone were ~4.5 GB. Board takes 32 GB (2x16 GB DDR4-3200),
+     both slots currently filled with 8 GB.
+
+ (d) WSL2 OVER-PROVISIONED (user declined for now). .wslconfig has memory=12GB
+     on a 16 GB host, plus processors=12. Suggested:
+        memory=8GB / processors=8 / autoMemoryReclaim=gradual / sparseVhd=true
+
+ MEDIUM
+ ------
+ (e) PCIe ASPM = Maximum power savings on AC (0x02). Adds wake latency to
+     every PCIe device including the DRAM-less NVMe. Should be 0 (Off) on AC.
+        powercfg /setacvalueindex SCHEME_CURRENT SUB_PCIEXPRESS ASPM 0
+        powercfg /setactive SCHEME_CURRENT
+
+ (f) NTFS Last Access Time is ENABLED (DisableLastAccess = 2, system managed).
+     Every file READ triggers a metadata WRITE -- write amplification on a
+     DRAM-less drive, across .gradle / Android SDK / git trees.
+        fsutil behavior set disablelastaccess 1
+
+ (g) Disk idle timeout = 30 s on AC. Rotational-disk behaviour, pointless on
+     NVMe, adds wake latency.
+        powercfg /setacvalueindex SCHEME_CURRENT SUB_DISK DISKIDLE 0
+        powercfg /setactive SCHEME_CURRENT
+
+ LOW
+ ---
+ (h) Telemetry scheduled tasks still Ready despite DiagTrack being disabled:
+     Consolidator, UsbCeip, DmClient, DmClientOnScenarioDownload,
+     Microsoft Compatibility Appraiser Exp.
+     Plus OneDC_Updater (MSI One Dragon Center updater, fires 2 min after every
+     boot + daily). Disabling it does NOT affect MSI Center fan control.
+
+ (i) Switchable Dynamic Graphics = "Optimize power savings" on AC. Fix before
+     re-enabling the Arc.
+
+ (j) Realtek Ethernet has Energy-Efficient Ethernet, Green Ethernet and Power
+     Saving Mode all Enabled. Dormant (you are on Wi-Fi) but causes link
+     renegotiation drops when docked.
+
+ (k) Two hidden Wi-Fi power savers still on (registry-only, need adapter
+     restart): SkipOverDtimEnable = 1, LprxEnable = 1. Latency, not throughput.
+
+
+===============================================================================
+ SECTION 4 -- PRE-EXISTING TUNING  (was already applied before this session)
+===============================================================================
+ This is your baseline. It was NOT changed by this session. It is recorded so
+ that if a Windows reset / repair install / feature update undoes it, you can
+ see exactly what the machine looked like and put it back.
+
+-------------------------------------------------------------------------------
+ 4.1  FILESYSTEM / NTFS
+-------------------------------------------------------------------------------
+   8dot3 name creation      DISABLED on all volumes
+   NTFS MemoryUsage         2  (increased paged pool for NTFS metadata)
+   TRIM (NTFS + ReFS)       enabled (DisableDeleteNotify = 0)
+
+ REAPPLY (elevated)
+   fsutil behavior set disable8dot3 1
+   fsutil behavior set memoryusage 2
+   fsutil behavior set disabledeletenotify 0
+ VERIFY
+   fsutil behavior query disable8dot3
+   fsutil behavior query memoryusage
+   fsutil behavior query disabledeletenotify
+
+-------------------------------------------------------------------------------
+ 4.2  SHELL / UI
+-------------------------------------------------------------------------------
+   VisualFXSetting = 2      ("Adjust for best performance")
+
+ REAPPLY
+   Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects' `
+     -Name VisualFXSetting -Value 2 -Type DWord
+
+-------------------------------------------------------------------------------
+ 4.3  NETWORK
+-------------------------------------------------------------------------------
+   Receive Window Auto-Tuning   normal   (correct -- do NOT set to disabled)
+   ECN Capability               disabled (Windows default)
+   RFC 1323 Timestamps          allowed
+   Wireless adapter power AC    0x0 = Maximum Performance
+   Wi-Fi Transmit Power         5. Highest
+   Wi-Fi U-APSD support         Disabled
+   Wi-Fi Sleep on WoWLAN Disc.  Disabled
+
+-------------------------------------------------------------------------------
+ 4.4  STARTUP  (only 3 entries -- keep it this way)
+-------------------------------------------------------------------------------
+   Tailscale          Common Startup
+   SecurityHealth     HKLM\...\CurrentVersion\Run
+   RtkAudUService     HKLM\...\CurrentVersion\Run
+
+-------------------------------------------------------------------------------
+ 4.5  DISABLED SERVICES  (40 total, captured 2026-09-13)
+-------------------------------------------------------------------------------
+ Telemetry / diagnostics / reporting
+   DiagTrack                Connected User Experiences and Telemetry
+   dmwappushservice         WAP Push message Routing
+   InventorySvc             Inventory and Compatibility Appraisal
+   PcaSvc                   Program Compatibility Assistant
+   WerSvc                   Windows Error Reporting
+   wercplsupport            Problem Reports Control Panel Support
+   whesvc                   Windows Health and Optimized Experiences
+   wisvc                    Windows Insider Service
+   WSAIFabricSvc            Windows AI Components Host
+
+ Performance / indexing
+   SysMain                  SysMain (superfetch)  [Everything used instead]
+   WSearch                  Windows Search        [Everything used instead]
+   TrkWks                   Distributed Link Tracking Client
+
+ Xbox / gaming
+   XblAuthManager, XblGameSave, XboxGipSvc, XboxNetApiSvc, GameInputSvc
+
+ Hardware / vendor
+   dptftcs                  Intel DTT Telemetry Service       ** see 4.6 (a) **
+   DSAService               Intel Driver & Support Assistant  ** see 4.6 (b) **
+   DSAUpdateService         Intel DSA Updater                 ** see 4.6 (b) **
+   IntelGFXFWupdateTool     Intel Graphics Firmware Update
+   WMIRegistrationService   Intel ME WMI Provider Registration
+   NahimicService           Nahimic audio effects (MSI)
+   MSI Sendevsvc            MSI Sensor dev service            ** see 4.6 (c) **
+   StiSvc                   Windows Image Acquisition (scanners)
+   WbioSrvc                 Windows Biometric (fingerprint / Hello)
+
+ Networking / sharing / remote
+   lmhosts, NetTcpPortSharing, RemoteAccess, RemoteRegistry,
+   SSDPSRV (UPnP discovery), QWAVE, shpamsvc
+
+ Printing
+   Spooler                  Print Spooler
+
+ Location / time
+   lfsvc                    Geolocation Service               ** see 4.6 (d) **
+   tzautoupdate             Auto Time Zone Updater
+
+ Phone / device linking
+   CDPSvc                   Connected Devices Platform        ** see 4.6 (e) **
+   O+Connect Service        OnePlus Connect
+   OplusRemoteService       OnePlus Remote
+
+ Other
+   ssh-agent                OpenSSH Authentication Agent      ** see 4.6 (f) **
+
+ REAPPLY ALL (elevated) -- only if a reset undid them
+   $svc = @('CDPSvc','DiagTrack','dmwappushservice','dptftcs','DSAService',
+     'DSAUpdateService','GameInputSvc','IntelGFXFWupdateTool','InventorySvc',
+     'lfsvc','lmhosts','MSI Sendevsvc','NahimicService','NetTcpPortSharing',
+     'O+Connect Service','OplusRemoteService','PcaSvc','QWAVE','RemoteAccess',
+     'RemoteRegistry','shpamsvc','Spooler','SSDPSRV','ssh-agent','StiSvc',
+     'SysMain','TrkWks','tzautoupdate','WbioSrvc','wercplsupport','WerSvc',
+     'whesvc','wisvc','WMIRegistrationService','WSAIFabricSvc','WSearch',
+     'XblAuthManager','XblGameSave','XboxGipSvc','XboxNetApiSvc')
+   foreach ($s in $svc) { Set-Service $s -StartupType Disabled -ErrorAction SilentlyContinue }
+
+ VERIFY
+   Get-Service | Where StartType -eq 'Disabled' | Measure-Object
+   EXPECT: 40
+
+-------------------------------------------------------------------------------
+ 4.6  SIDE EFFECTS OF THE BASELINE  (things these disables actually caused)
+-------------------------------------------------------------------------------
+ These are NOT bugs to fix blindly -- they are the known cost of the debloat.
+ Recorded so you are not confused later.
+
+ (a) dptftcs disabled  ->  very likely the cause of the
+     "Intel DTT Device Extension Component -- Error" seen in Device Manager.
+     The CORE thermal stack is fine (Processor Participant, Thermal Zone and 3
+     Generic Participants all report OK), so dynamic thermal management still
+     works. This error is cosmetic. Do not panic-reinstall DTT over it.
+
+ (b) DSAService + DSAUpdateService disabled  ->  GOOD SIDE EFFECT.
+     Intel cannot silently push a Wi-Fi or GPU driver, which is what protects
+     item [9] (MIMO No SMPS) from being reset. Keep these disabled.
+
+ (c) MSI Sendevsvc disabled  ->  likely why
+     MSAcpi_ThermalZoneTemperature returns no data and die temps cannot be read
+     from Windows. Use HWiNFO64 if you need temps, or re-enable this service.
+
+ (d) lfsvc (Geolocation) disabled  ->  CONFIRMED cause of
+     "netsh wlan show interfaces" failing with:
+       "Network shell commands need location permission to access WLAN
+        information."
+     This is why the Wi-Fi BAND could not be read directly and had to be
+     inferred from SSID name + link rate (see Section 3 item b).
+     To read Wi-Fi band/signal/channel you must enable lfsvc AND turn on
+     Location Services in Privacy & security settings.
+
+ (e) CDPSvc disabled  ->  Cross-Device Resume was already partly dead before
+     item [8] turned it off explicitly. Belt and braces.
+
+ (f) ssh-agent disabled  ->  *** CHECK THIS ONE ***
+     If you use SSH keys through the agent (git over SSH with a passphrase-
+     protected key, ssh-add, VS Code Remote-SSH), this WILL break it. If your
+     SSH works today, you are using keys directly and this is harmless.
+     To re-enable:  Set-Service ssh-agent -StartupType Manual
+
+-------------------------------------------------------------------------------
+ 4.7  HARDWARE BASELINE  (verified healthy, nothing to do)
+-------------------------------------------------------------------------------
+   RAM            dual channel CONFIRMED -- Controller0-ChannelA +
+                  Controller1-ChannelA, both sticks running 3200 MT/s.
+                  Mixed brands (Samsung + A-DATA) is fine; timings match.
+   SSD            WDC PC SN540, Healthy, TRIM on, GPT, FW 33006000
+   Free space     ~189 GB of 476 GB (40%)
+   Turbo          working -- % Processor Performance exceeded 100%
+
+
+===============================================================================
+ SECTION 5 -- HARDWARE / BIOS  (set by user, NOT managed by Windows)
+===============================================================================
+ PL1 = 35 W   (sustained)
+ PL2 = 60 W   (burst)
+
+ These live in firmware, so nothing in Windows will reset them. They are the
+ real governor of CPU power -- item [2] above only removes a frequency ceiling
+ sitting above these limits.
+
+ MEASURED BEHAVIOUR (all-core load, 2026-09-13, after item [2]):
+   t=11-17s   3147 MHz   <- PL2 window, 60 W
+   t=22-32s   2400 MHz   <- tau decay
+   t=37-52s   1810 MHz   <- PL1 steady state, 35 W
+   peak seen  3529 MHz
+ Textbook PL2 -> PL1 staircase. Roughly a 20 s burst window. Costs about
+ 15-20% sustained multicore vs the stock 45 W PL1, in exchange for much lower
+ temps and fan noise.
+
+ INTEL DTT NOTE: the core DPTF / Innovation Platform Framework stack is
+ HEALTHY (Processor Participant, Thermal Zone and 3 Generic Participants all
+ report OK). Only "DTT Device Extension Component", a software shim, is in an
+ error state. Dynamic thermal management is working. Static PL1/PL2 and DTT
+ coexist -- the PL values set a ceiling low enough that DTT rarely intervenes.
+
+ RECONSIDER PL1 WHEN THE ARC dGPU IS RE-ENABLED. With both CPU and GPU sharing
+ one heatpipe budget, a hard 35 W CPU floor can starve whichever side is doing
+ real work. Suggest raising PL1 to ~40 W and letting DTT arbitrate.
+
+ Note: MSAcpi_ThermalZoneTemperature returns no data on this board, so die
+ temps cannot be read from Windows. Use HWiNFO64 for real package wattage.
+
+
+===============================================================================
+ SECTION 6 -- WHAT RESETS WHAT  (drift risk reference)
+===============================================================================
+ EVENT                          RESETS
+ -----                          ------
+ Reboot                         nothing (all items are persistent)
+ Wi-Fi driver update/reinstall  [9] MIMO No SMPS
+ Settings -> Network reset      [9] MIMO No SMPS
+ Re-running a debloat script    [4] iphlpsvc -> Tailscale breaks again
+ Windows feature update         [8] Cross-Device Resume (likely)
+                                [7] Defender exclusions (occasionally)
+ Intel driver bundle install    [6] Intel Computing Improvement Program returns
+ Power plan reset / new plan    [2] PROCTHROTTLEMAX back to default
+ System Restore rollback        potentially all of them
+
+ MOST LIKELY TO DRIFT:  [8] Cross-Device Resume, then [9] MIMO, then [4].
+
+ Run verify-tuning.ps1 after any driver update, feature update, or debloat run.
+
+===============================================================================
+ END OF LOG
+===============================================================================
