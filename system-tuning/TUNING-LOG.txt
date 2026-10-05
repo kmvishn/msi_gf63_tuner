@@ -16,6 +16,8 @@
  COMPANION FILES (same folder):
    verify-tuning.ps1   - checks every item below, prints OK / DRIFTED
    reapply-tuning.ps1  - re-applies anything that got reset (idempotent)
+   advanced-tuning.ps1 - Tier 1 "next level" items [10]-[17] (see Section 7)
+   pin-gpu-drivers.ps1 - stop Windows Update downgrading GPU drivers (item [19])
 
  QUICK USE:
    Check what drifted   ->  powershell -ExecutionPolicy Bypass -File verify-tuning.ps1
@@ -562,18 +564,160 @@
  EVENT                          RESETS
  -----                          ------
  Reboot                         nothing (all items are persistent)
- Wi-Fi driver update/reinstall  [9] MIMO No SMPS
- Settings -> Network reset      [9] MIMO No SMPS
+ Wi-Fi driver update/reinstall  [9] MIMO, [10] Preferred Band, [14] hidden savers
+ Settings -> Network reset      [9] MIMO, [10] Preferred Band, [14] hidden savers
  Re-running a debloat script    [4] iphlpsvc -> Tailscale breaks again
  Windows feature update         [8] Cross-Device Resume (likely)
                                 [7] Defender exclusions (occasionally)
  Intel driver bundle install    [6] Intel Computing Improvement Program returns
- Power plan reset / new plan    [2] PROCTHROTTLEMAX back to default
+ Power plan reset / new plan    [2] PROCTHROTTLEMAX, [12] ASPM, [13] DiskIdle
  System Restore rollback        potentially all of them
 
  MOST LIKELY TO DRIFT:  [8] Cross-Device Resume, then [9] MIMO, then [4].
 
  Run verify-tuning.ps1 after any driver update, feature update, or debloat run.
+
+===============================================================================
+ SECTION 7 -- ADVANCED TUNING (Tier 1)          added 2026-10-06
+===============================================================================
+ Applied     : 2026-10-06  (elevated PowerShell)
+ Scripts     : advanced-tuning.ps1  (items [10]-[17], idempotent, run elevated)
+               pin-gpu-drivers.ps1  (item [19], run elevated)
+ Goal        : perfect balance of EFFICIENCY + LONGEVITY + PERFORMANCE.
+               The latency items [12][13] are AC-ONLY, so battery efficiency
+               is deliberately left untouched.
+ Context     : OS now build 26300; pagefile resize from item [1] confirmed live
+               (commit limit 16.7 -> 21 GB). Arc A370M dGPU is ONLINE again
+               (Section 3a / Section 5 -- dGPU driver + PL1 still OPEN).
+
+ BALANCE MAP
+   LONGEVITY   : [11] Last-Access off, [18] sparseVhd (fewer SSD writes)
+   EFFICIENCY  : [15] Memory Compression, [16] telemetry tasks off,
+                 [18] autoMemoryReclaim (RAM handed back to Windows)
+   PERFORMANCE : [10] Wi-Fi 5 GHz, [12] ASPM off, [13] DiskIdle off,
+                 [14] Wi-Fi latency savers off
+
+-------------------------------------------------------------------------------
+ [10] WI-FI PREFERRED BAND -> Prefer 5 GHz        (addresses Section 3b)
+-------------------------------------------------------------------------------
+ BEFORE   RoamingPreferredBandType = '1. No Preference', on 2.4 GHz (~300 Mbps)
+ AFTER    RoamingPreferredBandType = '3. Prefer 5GHz band'
+ SAFETY   'Prefer', NOT 'Force' -- 2.4 GHz stays as automatic fallback. Both
+          bands remain usable; this cannot isolate you.
+ CAVEAT   Preferred Band only picks 5 GHz among radios of the SAME SSID. If the
+          router exposes 2.4 and 5 GHz under DIFFERENT SSID names (saved network
+          "<your-SSID>"), this setting cannot move you -- connect to the 5 GHz
+          SSID by name once. (Band can't be read via netsh: lfsvc/Location is
+          off, see 4.6d.)
+ REAPPLY  Set-NetAdapterAdvancedProperty -Name WiFi -DisplayName 'Preferred Band' -DisplayValue '3. Prefer 5GHz band'
+ VERIFY   (Get-NetAdapterAdvancedProperty -Name WiFi -RegistryKeyword RoamingPreferredBandType).DisplayValue
+ REVERT   ...-DisplayValue '1. No Preference'
+
+-------------------------------------------------------------------------------
+ [11] NTFS LAST-ACCESS TIME -> disabled           (addresses Section 3f)
+-------------------------------------------------------------------------------
+ PROBLEM  DisableLastAccess = 2 (system-managed, ENABLED). Every file READ
+          triggered a metadata WRITE -- write amplification on the DRAM-less
+          SN540, across .gradle / Android SDK / git trees.  [LONGEVITY]
+ BEFORE   DisableLastAccess = 2      AFTER  DisableLastAccess = 1
+ REAPPLY  fsutil behavior set disablelastaccess 1
+ VERIFY   fsutil behavior query disablelastaccess   -> DisableLastAccess = 1
+ REVERT   fsutil behavior set disablelastaccess 2
+
+-------------------------------------------------------------------------------
+ [12] PCIe ASPM on AC -> Off                       (addresses Section 3e)
+-------------------------------------------------------------------------------
+ BEFORE   ASPM AC = 0x01 (moderate savings) -- wake latency on every PCIe
+          device incl. the DRAM-less NVMe (HMB traffic).  [PERFORMANCE, AC only]
+ AFTER    ASPM AC = 0x00 (Off).  Battery (DC) value left unchanged.
+ REAPPLY  powercfg /setacvalueindex SCHEME_CURRENT SUB_PCIEXPRESS ASPM 0; powercfg /setactive SCHEME_CURRENT
+ VERIFY   powercfg /query SCHEME_CURRENT SUB_PCIEXPRESS ASPM  -> Current AC 0x0
+ REVERT   ...ASPM 1 (moderate) or 2 (max savings); powercfg /setactive SCHEME_CURRENT
+
+-------------------------------------------------------------------------------
+ [13] DISK IDLE TIMEOUT on AC -> never             (addresses Section 3g)
+-------------------------------------------------------------------------------
+ BEFORE   DISKIDLE AC = 0x1e (30 s) -- rotational-era stall, pointless on NVMe.
+ AFTER    DISKIDLE AC = 0 (never).  [PERFORMANCE, AC only]
+ REAPPLY  powercfg /setacvalueindex SCHEME_CURRENT SUB_DISK DISKIDLE 0; powercfg /setactive SCHEME_CURRENT
+ VERIFY   powercfg /query SCHEME_CURRENT SUB_DISK DISKIDLE  -> Current AC 0x0
+ REVERT   ...DISKIDLE 1200; powercfg /setactive SCHEME_CURRENT
+
+-------------------------------------------------------------------------------
+ [14] HIDDEN WI-FI POWER SAVERS -> off             (addresses Section 3k)
+-------------------------------------------------------------------------------
+ WHAT     Two registry-only AX201 savers (no UI), in the NIC Class key:
+          HKLM\SYSTEM\CurrentControlSet\Control\Class\{4d36e972-...}\<NNNN>
+ BEFORE   SkipOverDtimEnable = 1, LprxEnable = 1   (first-packet latency)
+ AFTER    SkipOverDtimEnable = 0, LprxEnable = 0
+ NOTE     Need an adapter restart; the script bounces WiFi (~5 s, auto-
+          reconnects). advanced-tuning.ps1 derives the Class subkey itself.
+ PERSIST  Reset by Wi-Fi driver reinstall or Network reset (same as [9]/[10]).
+
+-------------------------------------------------------------------------------
+ [15] MEMORY COMPRESSION -> ENABLED                (new find, 26H2 / RAM)
+-------------------------------------------------------------------------------
+ PROBLEM  Get-MMAgent.MemoryCompression was FALSE -- a debloat casualty. On a
+          16 GB host running heavy workloads + WSL, disabling compression forces
+          more hard paging to the DRAM-less SSD. Hurts efficiency AND SSD life.
+ BEFORE   MemoryCompression = False     AFTER  MemoryCompression = True
+ REAPPLY  Enable-MMAgent -MemoryCompression
+ VERIFY   (Get-MMAgent).MemoryCompression   -> True
+ REVERT   Disable-MMAgent -MemoryCompression    (not recommended on 16 GB)
+
+-------------------------------------------------------------------------------
+ [16] TELEMETRY SCHEDULED TASKS -> disabled        (addresses Section 3h)
+-------------------------------------------------------------------------------
+ DISABLED Consolidator, UsbCeip, Microsoft Compatibility Appraiser Exp,
+          DmClient, DmClientOnScenarioDownload.
+          (KernelCeipTask / ProgramDataUpdater / OneDC_Updater not present on
+           this build -- skipped, not a failure.)
+ WHY      DiagTrack is already disabled (4.5); these tasks still ran Ready.
+ VERIFY   (Get-ScheduledTask -TaskName Consolidator).State  -> Disabled
+
+-------------------------------------------------------------------------------
+ [17] REALTEK ETHERNET POWER-SAVING -> off         (addresses Section 3j)
+-------------------------------------------------------------------------------
+ DISABLED Energy-Efficient Ethernet, Green Ethernet, Power Saving Mode.
+ WHY      Dormant on Wi-Fi, but causes link renegotiation drops when docked.
+
+-------------------------------------------------------------------------------
+ [18] WSL2 MEMORY RECLAIM                           (partial Section 3d)
+-------------------------------------------------------------------------------
+ FILE     %USERPROFILE%\.wslconfig
+ ADDED    autoMemoryReclaim=gradual   (hand idle WSL cache RAM back to Windows)
+          sparseVhd=true              (keep the ext4 VHD from bloating)
+ KEPT     memory=12GB, processors=12  (user deferred lowering these)
+ APPLY    takes effect after:  wsl --shutdown   (then restart your distro)
+ REVERT   remove the two lines; wsl --shutdown
+
+-------------------------------------------------------------------------------
+ [19] PIN GPU DRIVERS vs WINDOWS UPDATE            (new, 2026-10-06)
+-------------------------------------------------------------------------------
+ PROBLEM  Windows Update re-offers an older WHQL Intel graphics driver and
+          overwrites the newer one installed manually from intel.com -- for BOTH
+          Iris Xe (PCI\VEN_8086&DEV_46A6) and Arc A370M (PCI\VEN_8086&DEV_5693),
+          which share one Intel package. DSAService/DSAUpdateService are already
+          disabled (4.6b), so Windows Update is the only remaining pusher.
+ CHOICE   GLOBAL exclude (recommended): WU stops delivering ANY driver; manual
+          installs always work; no risk of stranding a GPU on Microsoft Basic
+          Display Adapter (Code 48). Quality/security/feature updates unaffected.
+ AFTER    ExcludeWUDriversInQualityUpdate = 1
+            HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate
+          SearchOrderConfig = 0   (never auto-fetch drivers from WU)
+            HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching
+ ORDER    Install the wanted Intel driver + REBOOT first, THEN run the script.
+ OPTIONAL pin-gpu-drivers.ps1 -IncludePerDevice adds a per-device DenyDeviceIDs
+          deny for the two GPU IDs (Retroactive=0, keeps device working). NOTE:
+          per-device also blocks YOUR manual installs -- use -LiftPerDevice to
+          update, then -IncludePerDevice to re-pin.
+ REAPPLY  pin-gpu-drivers.ps1            (global exclude)
+ VERIFY   (Get-ItemProperty 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate').ExcludeWUDriversInQualityUpdate -> 1
+ REVERT   pin-gpu-drivers.ps1 -Revert
+
+ STILL OPEN (deferred): Section 3a Arc driver version (keep it current manually
+ now that WU can't touch it), Section 5 PL1 35->40 W now the Arc is live,
+ RAM 16->32 GB (the real bottleneck), switchable-graphics AC default.
 
 ===============================================================================
  END OF LOG
