@@ -717,6 +717,14 @@
           which WU cannot bypass. WU's catalog still LISTS the old driver, but
           any install attempt is refused ("forbidden by system policy").
  MANUAL   update workflow:  -LiftPerDevice  ->  install + reboot  ->  -IncludePerDevice
+ HIDDEN   2026-10-06: the deny blocks INSTALL but WU still LISTED the drivers
+          ("will install with the next cumulative update"). Also HID them so the
+          WU list is clean, via PSWindowsUpdate (elevated):
+            Install-Module PSWindowsUpdate -Force -Scope AllUsers
+            Hide-WindowsUpdate -Title 'Intel*' -Confirm:$false
+          Un-hide:  Show-WindowsUpdate -Title 'Intel*' -Confirm:$false
+          A NEWER driver you actually want has a different title, so it is NOT
+          hidden by this. Net: 3 layers = global exclude + per-device deny + hide.
  REAPPLY  pin-gpu-drivers.ps1 -IncludePerDevice     (global + per-device)
  VERIFY   (Get-ItemProperty 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate').ExcludeWUDriversInQualityUpdate -> 1
  REVERT   pin-gpu-drivers.ps1 -Revert
