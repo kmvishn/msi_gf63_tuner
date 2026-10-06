@@ -707,11 +707,17 @@
           SearchOrderConfig = 0   (never auto-fetch drivers from WU)
             HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching
  ORDER    Install the wanted Intel driver + REBOOT first, THEN run the script.
- OPTIONAL pin-gpu-drivers.ps1 -IncludePerDevice adds a per-device DenyDeviceIDs
-          deny for the two GPU IDs (Retroactive=0, keeps device working). NOTE:
-          per-device also blocks YOUR manual installs -- use -LiftPerDevice to
-          update, then -IncludePerDevice to re-pin.
- REAPPLY  pin-gpu-drivers.ps1            (global exclude)
+ LEAKED   Global alone was NOT enough: after applying it, Windows Update STILL
+          downgraded the Iris Xe (DEV_46A6) back to 30.0.101.1329. Global keys
+          are WU-preference level and WU's servicing stepped around them. The
+          Arc (DEV_5693) held. Conclusion: on Home, use the per-device deny.
+ HARDLOCK 2026-10-06: re-installed 32.x, rebooted, then applied per-device
+          DenyDeviceIDs on BOTH GPU IDs (Retroactive=0). That is install-level
+          enforcement -- "takes precedence... the device cannot be installed" --
+          which WU cannot bypass. WU's catalog still LISTS the old driver, but
+          any install attempt is refused ("forbidden by system policy").
+ MANUAL   update workflow:  -LiftPerDevice  ->  install + reboot  ->  -IncludePerDevice
+ REAPPLY  pin-gpu-drivers.ps1 -IncludePerDevice     (global + per-device)
  VERIFY   (Get-ItemProperty 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate').ExcludeWUDriversInQualityUpdate -> 1
  REVERT   pin-gpu-drivers.ps1 -Revert
 
