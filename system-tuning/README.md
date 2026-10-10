@@ -1,104 +1,261 @@
-# Windows System Tuning — MSI GF63 (i5-12500H / Iris Xe + Arc A370M)
+# Windows System Tuning — MSI Thin GF63 12HW
 
-PowerShell scripts that **apply, verify, and document** a set of Windows 11
-performance/debloat tweaks for an MSI Thin GF63 12HW. This is a personal,
-machine-specific profile — read the caveats before running it on anything else.
+One PowerShell script that **checks, applies, and documents** a set of Windows 11
+performance and debloat tweaks for an MSI Thin GF63 12HW
+(i5-12500H · 16 GB · Iris Xe + Arc A370M · DRAM-less NVMe).
+
+> **This is a machine-specific profile, not a universal optimizer.** Read
+> [Caveats](#caveats) before running it on any other PC.
+
+---
+
+## Contents
+
+- [Files](#files)
+- [Quick start](#quick-start)
+- [The menu](#the-menu)
+- [Command-line usage](#command-line-usage)
+- [What gets tuned](#what-gets-tuned)
+  - [Core fixes `[1]`–`[9]`](#core-fixes-19)
+  - [Baseline `[4.x]`](#baseline-4x)
+  - [Advanced `[10]`–`[18]`](#advanced-1018)
+  - [GPU driver pin `[19]`](#gpu-driver-pin-19)
+  - [Idle-RAM debloat `[20]`–`[26]`](#idle-ram-debloat-2026)
+- [Deliberately left alone](#deliberately-left-alone)
+- [Known gotchas](#known-gotchas)
+- [When to re-run](#when-to-re-run)
+- [Reverting](#reverting)
+- [Caveats](#caveats)
+
+---
 
 ## Files
 
-| File | What it does | Needs admin |
-|---|---|---|
-| [`verify-tuning.ps1`](verify-tuning.ps1) | **Read-only.** Checks every tuned item and prints `OK` / `DRIFTED`. Changes nothing. | No (elevate for full detail — Defender exclusions + shadow storage) |
-| [`reapply-tuning.ps1`](reapply-tuning.ps1) | **Idempotent.** Re-applies anything that got reset. Skips what's already correct. | Yes |
-| [`advanced-tuning.ps1`](advanced-tuning.ps1) | **Idempotent.** Tier-1 "next level" items [10]–[17]: Wi-Fi 5 GHz, NTFS last-access off, PCIe ASPM / disk-idle off (AC only), memory compression on, telemetry tasks off, Realtek power-save off. Plus Section 8 idle-RAM debloat [20]–[25]. | Yes |
-| [`pin-gpu-drivers.ps1`](pin-gpu-drivers.ps1) | **Idempotent.** Item [19]: stop Windows Update downgrading the Intel GPU drivers (global exclude by default; `-IncludePerDevice` for a per-device hard-block; `-Revert`). | Yes |
-| [`TUNING-LOG.txt`](TUNING-LOG.txt) | Full rationale, before/after, verify, and revert commands for every item. The source of truth. | — |
+| File | Purpose |
+|---|---|
+| [`tune.ps1`](tune.ps1) | **The only script.** Each item is defined once as a *check* plus a *fix*. Verify runs the checks; Apply fixes whatever fails, then re-checks it. |
+| [`TUNING-LOG.txt`](TUNING-LOG.txt) | The source of truth: why each item exists, before/after values, and the history (drift events, conflicts found). |
 
-## Quick use
+`tune.ps1` replaced four older scripts on 2026-10-10: `verify-tuning`,
+`reapply-tuning`, `advanced-tuning` and `pin-gpu-drivers`. Having one
+definition per item means the checker and the fixer can't disagree any more.
+
+---
+
+## Quick start
 
 ```powershell
-# See what has drifted (safe, read-only)
-powershell -ExecutionPolicy Bypass -File verify-tuning.ps1
+# Interactive menu
+powershell -ExecutionPolicy Bypass -File tune.ps1
 
-# Fix drift (run elevated). Add -IncludeBaseline to also restore the disabled-service set.
-powershell -ExecutionPolicy Bypass -File reapply-tuning.ps1 -IncludeBaseline
+# Check what has drifted. Read-only and works without admin.
+powershell -ExecutionPolicy Bypass -File tune.ps1 verify
 
-# Preview changes without applying them
-powershell -ExecutionPolicy Bypass -File reapply-tuning.ps1 -WhatIf
+# Fix anything that drifted (run PowerShell as Administrator)
+powershell -ExecutionPolicy Bypass -File tune.ps1 apply
 ```
 
-If you hit *"running scripts is disabled on this system"*, that's the execution
-policy — either use the `-ExecutionPolicy Bypass` flag above, or set it once for
-your user: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+If you see *"running scripts is disabled on this system"*, keep the
+`-ExecutionPolicy Bypass` flag, or allow local scripts once for your user:
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 
-## What it tunes (summary — see `TUNING-LOG.txt` for the why)
+**Admin rules:**
+- **Verify** works as a normal user. A few checks need admin (Defender
+  exclusions, shadow storage, Memory Compression); they show as `SKIPPED`
+  until you run elevated.
+- **Apply** and the **GPU pin** need admin. From the menu, the script offers to
+  relaunch itself elevated (you'll get a UAC prompt).
 
-- **[1]** Pagefile fixed at 4096/16384 MB (commit-limit exhaustion with WSL2)
-- **[2]** Max processor state → 100% on AC (removes a 99% frequency ceiling)
-- **[3]** Fast Startup (hiberboot) disabled
-- **[4]** IP Helper re-enabled — **root cause of Tailscale boot failures**
-- **[5]** Shadow Copy storage → 10 GB, System Restore enabled
-- **[6]** Intel Computing Improvement Program uninstalled (telemetry)
-- **[7]** Defender exclusions for build caches (`.gradle`, `.android`)
-- **[8]** Cross-Device Resume off (least durable — re-check after feature updates)
-- **[9]** Wi-Fi MIMO Power Save → No SMPS (latency on first packets after idle)
-- Plus a baseline: NTFS tweaks, visual-effects = performance, and ~40 disabled
-  services. The service check is **optional-aware** — a service that isn't
-  installed is skipped, not counted as drift.
+---
 
-### Advanced tuning — Section 7 (added 2026-10-06)
+## The menu
 
-Balance of **efficiency + longevity + performance** (latency items are AC-only,
-so battery efficiency is untouched). See `TUNING-LOG.txt` Section 7 for the why.
+```
+=================== MSI GF63 TUNING ===================
+  1  Verify everything (read-only)
+  2  Apply EVERYTHING that drifted
+  3  Apply core fixes        [1]-[9]
+  4  Apply baseline          NTFS, visual FX, services
+  5  Apply advanced          [10]-[18]
+  6  Apply idle-RAM debloat  [20]-[26]
+  7  Apply specific items    (enter IDs, e.g. 15,23)
+  8  GPU driver pin          [19]
+  9  List all items
+  Q  Quit
+```
 
-- **[10]** Wi-Fi → Prefer 5 GHz (keeps 2.4 GHz fallback — "prefer", not "force")
-- **[11]** NTFS Last-Access **off** — less write-amplification on the DRAM-less SSD
-- **[12]/[13]** PCIe ASPM off + disk-idle → never, **AC only**
-- **[14]** Hidden Wi-Fi latency savers (`SkipOverDtimEnable`, `LprxEnable`) off
-- **[15]** **Memory Compression on** (was disabled by a debloat — hurts a 16 GB host)
-- **[16]** Telemetry scheduled tasks disabled (CEIP / Appraiser / DmClient)
-- **[17]** Realtek Ethernet EEE / Green / Power-Saving off
-- **[18]** WSL2 `autoMemoryReclaim=gradual` + `sparseVhd=true`
-- **[19]** **Pin GPU drivers vs Windows Update** — stop WU re-installing an older
-  WHQL Intel driver over a manually-installed one. On **Home** (no `gpedit`) this
-  is registry-only: `ExcludeWUDriversInQualityUpdate=1` +
-  `SearchOrderConfig=0`, with an optional per-device `DenyDeviceIDs` hard-block.
+Output legend:
 
-### Idle-RAM / background debloat — Section 8 (added 2026-10-10)
+| Tag | Meaning |
+|---|---|
+| `OK` / `ok` | Already correct. Apply leaves it untouched. |
+| `DRIFTED` | Not at the tuned value (Verify). The `fix` line gives the command. |
+| `APPLIED` | Was fixed **and** passed its re-check. |
+| `FAILED` | The fix ran, but the re-check still fails, or the fix threw an error. |
+| `SKIPPED` | Can't be checked here: not installed, or needs admin. |
+| `MANUAL` | No automatic fix. The hint says what to do. |
 
-Small, low-risk trims found during an idle-RAM audit (4.7 GB in use turned out
-to be normal — ~2.5 GB is Windows, the rest was the apps that were open).
-Expect ~100–300 MB and fewer background wakeups, not a big win.
+---
 
-- **[20]** `MapsBroker` → Disabled
-- **[21]** `SharedAccess` (ICS) → **Manual**, not Disabled — it's trigger-started
-  by WSL / Hyper-V NAT, so seeing it *Running* is expected
-- **[22]** Leftover scheduled tasks off — Maps, XblGameSave, WER QueueReporting,
-  PcaPatchDbTask, FamilySafety, Nahimic (all belong to already-disabled features)
-- **[23]** Edge Startup Boost + background mode off (policy — Edge will say
-  "managed by your organization")
-- **[24]** Delivery Optimization P2P off (`DODownloadMode=0`, HTTP only)
-- **[25]** Game DVR background capture off (policy)
-- **[26]** Taskbar search box hidden (HKCU; SearchHost loads on demand)
+## Command-line usage
 
-**Conflict fixed — `SysMain` vs Memory Compression [15]:** compression is
-hosted by SysMain, so `Enable-MMAgent` kept flipping SysMain back to Automatic
-and the baseline kept disabling it (killing compression). Resolved in favour of
-compression: **SysMain is no longer in the disable list** — it stays on, with
-its app prefetch/prelaunch turned off via `Disable-MMAgent`.
+```powershell
+.\tune.ps1 verify                        # check everything
+.\tune.ps1 verify -Group debloat         # one group
+.\tune.ps1 apply                         # fix everything that drifted
+.\tune.ps1 apply -Group core,advanced    # groups: core, baseline, advanced, debloat
+.\tune.ps1 apply -Item 15,23             # specific item IDs
+.\tune.ps1 apply -WhatIf                 # dry run: shows what it would fix, changes nothing
+.\tune.ps1 apply -SkipWiFiRestart        # don't restart the Wi-Fi adapter at the end
+.\tune.ps1 -Gpu Global                   # [19] GPU pin (Global | PerDevice | Lift | Revert)
+```
 
-## ⚠️ Caveats — this is NOT a universal optimizer
+Works in Windows PowerShell 5.1 and PowerShell 7.
 
-- **Machine-specific values** are baked in: pagefile size (16 GB RAM), Intel/MSI
-  service names, a Wi-Fi adapter literally named `WiFi`, Arc A370M, etc.
-- **`reapply -IncludeBaseline` is opinionated** and disables services that are
-  often wanted elsewhere — including **`Spooler`** (printing), **`WSearch`**
-  (Windows Search), and **`ssh-agent`**. Don't run it blind on
-  another PC.
-- `ssh-agent` is in the disable list. If you use SSH keys via the agent:
-  `Set-Service ssh-agent -StartupType Manual`.
-- `TUNING-LOG.txt` here has been **sanitized** of personal paths, Wi-Fi SSID,
-  project names, and device IDs for public hosting.
+---
 
-Run `verify-tuning.ps1` after any driver update, Windows feature update, or
-debloat run — those are the events most likely to undo these settings.
+## What gets tuned
+
+Item numbers match `TUNING-LOG.txt`, which has the full reasoning for each one.
+
+### Core fixes `[1]`–`[9]`
+
+| # | Setting | Why |
+|---|---|---|
+| 1 | Pagefile fixed at 4096 / 16384 MB | The 1 GB system-managed pagefile let WSL2 (12 GB + swap) exhaust the commit limit. Needs a reboot to resize. |
+| 2 | Max processor state on AC = 100% | It was 99%, the legacy trick for capping Turbo. Battery value untouched. |
+| 3 | Fast Startup off | The flag was on even though hibernation was off. Shutdown stays a real cold boot. |
+| 4 | **IP Helper** Automatic + Running | **Root cause of Tailscale failing at every boot.** A debloat had disabled it. |
+| 5 | Shadow Copy storage 10 GB + System Restore | Restore points were being aborted (Volsnap Event 36). |
+| 6 | Intel Computing Improvement Program removed | Telemetry using about 345 MB (`esrv`). An Intel driver bundle can bring it back. |
+| 7 | Defender exclusions for `.gradle`, `.android` | Real-time scanning of build caches slows builds. Source folders are still scanned. |
+| 8 | Cross-Device Resume off *(per user)* | Background process and popups. The most likely item to be reset by a feature update. |
+| 9 | Wi-Fi MIMO power save = No SMPS | Removes latency spikes on the first packets after idle. |
+
+### Baseline `[4.x]`
+
+Tuning that predates this project, kept enforced:
+
+- **4.1** NTFS: no 8.3 short names, `MemoryUsage=2`, TRIM on
+- **4.2** Visual effects = best performance *(per user)*
+- **4.3** Wireless adapter power on AC = Maximum Performance
+- **4.5** About 39 unused services disabled: Xbox, printing, telemetry, phone
+  link, vendor updaters, and similar. Services that aren't installed are
+  skipped, not counted as drift. Side effects are listed in log Section 4.6.
+
+### Advanced `[10]`–`[18]`
+
+| # | Setting | Why |
+|---|---|---|
+| 10 | Wi-Fi: prefer 5 GHz | About 3–4× the throughput of 2.4 GHz. "Prefer", not "force", so 2.4 GHz still works as a fallback. |
+| 11 | NTFS last-access timestamps off | Every file read was causing a write. Less wear on the DRAM-less SSD. |
+| 12 | PCIe ASPM off, **AC only** | Lower wake latency for the NVMe drive. |
+| 13 | Disk idle timeout never, **AC only** | A spin-down timer only adds stalls on NVMe. |
+| 14 | Hidden Intel Wi-Fi power savers off | `SkipOverDtimEnable` and `LprxEnable` let the radio sleep through beacons. |
+| 15 | **Memory Compression on**, SysMain on with its prefetch/prelaunch off | See [Known gotchas](#known-gotchas). |
+| 16 | Telemetry scheduled tasks off | CEIP, Compatibility Appraiser and DmClient kept running even with DiagTrack disabled. |
+| 17 | Realtek Ethernet EEE / Green / Power Saving off | Caused link drops when docked. |
+| 18 | WSL2 `autoMemoryReclaim=gradual`, `sparseVhd=true` | **Check only.** Edit `%USERPROFILE%\.wslconfig` by hand, then `wsl --shutdown`. |
+
+### GPU driver pin `[19]`
+
+Stops Windows Update from replacing the Intel graphics driver you installed
+from intel.com with an older one. It covers both GPUs, Iris Xe (`DEV_46A6`) and
+Arc A370M (`DEV_5693`).
+
+| Mode | Effect |
+|---|---|
+| `Global` | Windows Update stops delivering **any** driver. Your manual installs still work. |
+| `PerDevice` | `Global` plus an install-level block on both GPU IDs. Needed on Windows **Home**, where Windows Update got around the global setting. **This also blocks your own installs.** |
+| `Lift` | Removes only the per-device block, so you can install a new driver manually. |
+| `Revert` | Undoes everything `[19]` set. |
+
+Order matters: **install the driver you want and reboot first, then pin it.**
+To update later: `-Gpu Lift`, then install and reboot, then `-Gpu PerDevice`.
+
+### Idle-RAM debloat `[20]`–`[26]`
+
+Small trims found during an idle-RAM audit. Expect roughly 100–300 MB less
+memory use and fewer background wakeups.
+
+| # | Setting | Notes |
+|---|---|---|
+| 20 | `MapsBroker` disabled | Offline-maps updater. |
+| 21 | `SharedAccess` (ICS) → **Manual** | Not Disabled: WSL / Hyper-V NAT starts it on demand, so seeing it *Running* is expected. |
+| 22 | Leftover scheduled tasks off | Maps, Xbox, Error Reporting, PCA, Family Safety, Nahimic. Their services are already off. |
+| 23 | Edge Startup Boost + background mode off (policy) | Edge will show "managed by your organization". That's harmless. |
+| 24 | Delivery Optimization P2P off | HTTP-only downloads. The service itself stays. |
+| 25 | Game DVR background capture off (policy) | |
+| 26 | Taskbar search box hidden *(per user)* | SearchHost was using about 430 MB. Search from Start still works. |
+
+---
+
+## Deliberately left alone
+
+These came up and were rejected on purpose, so they don't get re-investigated:
+
+- **Defender, Themes, FontCache, push notifications, Update Orchestrator,
+  the Delivery Optimization service.** Turning these off breaks security,
+  visuals, notifications or updates.
+- **MSI Center / MSI Foundation Service.** They provide fan control, which
+  matters on a thin chassis.
+- **Packaged (Microsoft Store) app services.** Their startup type can't be
+  changed, even by an admin. They can only be stopped.
+- **The High Performance power plan.** On a laptop, Balanced already boosts
+  when needed.
+
+---
+
+## Known gotchas
+
+**SysMain vs Memory Compression `[15]`:** Memory Compression runs inside the
+SysMain service. Turning compression on switches SysMain back on, and
+disabling SysMain silently turns compression off. When both "SysMain disabled"
+and "compression on" were in this tuning, each run undid the other. The fix:
+keep SysMain **on**, but switch off its app prelaunch and prefetch, the part
+people usually disable it for. Compression keeps a 16 GB machine running WSL
+off the pagefile.
+
+**HKCU items** (`[8]`, `4.2`, `[26]`) are per-user settings. They apply to the
+account that runs the script. If you elevate with a *different* admin account,
+apply them from your own account.
+
+**Wi-Fi items** (`[9]`, `[10]`, `[14]`) take effect after an adapter restart.
+Apply does that once at the end (about a 5-second drop) unless you pass
+`-SkipWiFiRestart`.
+
+---
+
+## When to re-run
+
+Run `.\tune.ps1 verify` after any of these:
+
+| Event | Usually resets |
+|---|---|
+| Windows feature update | `[8]` Cross-Device Resume, sometimes `[7]` |
+| Wi-Fi driver update / network reset | `[9]`, `[10]`, `[14]` |
+| Running a debloat script | `[4]` IP Helper, which breaks Tailscale |
+| Intel driver bundle install | `[6]` comes back |
+| Power plan reset | `[2]`, `[12]`, `[13]` |
+
+---
+
+## Reverting
+
+Revert commands for each item are in `TUNING-LOG.txt` (`REVERT` lines), and in
+the comment above each item in `tune.ps1`. The GPU pin has a built-in revert:
+`.\tune.ps1 -Gpu Revert`.
+
+---
+
+## Caveats
+
+- **Machine-specific values are built in:** pagefile size for 16 GB of RAM,
+  Intel/MSI service names, a Wi-Fi adapter named exactly `WiFi`, the Intel GPU
+  hardware IDs, and Realtek Ethernet property names.
+- **The baseline service list is opinionated.** It disables **`Spooler`**
+  (printing), **`WSearch`** (Windows Search) and **`ssh-agent`**, which other
+  machines usually need. If you use SSH keys through the agent, run
+  `Set-Service ssh-agent -StartupType Manual` afterwards.
+- `TUNING-LOG.txt` has been sanitized for public hosting: no personal paths,
+  SSIDs, hostnames or device instance IDs.

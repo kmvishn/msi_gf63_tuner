@@ -23,11 +23,11 @@ a user-local folder; delete that folder to undo it completely.
 
 ```bash
 # one-time: SDK 9 into a user-local dir (no elevation, no PATH change)
-# powershell: ./dotnet-install.ps1 -Channel 9.0 -InstallDir C:\Users\vishnu\dotnet-sdk -NoPath
+# powershell: ./dotnet-install.ps1 -Channel 9.0 -InstallDir $env:USERPROFILE\dotnet-sdk -NoPath
 
-cd /c/Users/vishnu/Documents/YAMDCC-main/yamdcc
-/c/Users/vishnu/dotnet-sdk/dotnet.exe restore YAMDCC.sln --force-evaluate
-/c/Users/vishnu/dotnet-sdk/dotnet.exe build YAMDCC.sln -c Release -p:Platform="Any CPU"
+cd <path-to-repo>
+~/dotnet-sdk/dotnet.exe restore YAMDCC.sln --force-evaluate
+~/dotnet-sdk/dotnet.exe build YAMDCC.sln -c Release -p:Platform="Any CPU"
 ```
 
 Output lands in `YAMDCC.ConfigEditor/bin/Release/net48/` (~1.9 MB) plus each

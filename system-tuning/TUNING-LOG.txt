@@ -1,5 +1,5 @@
 ===============================================================================
- SYSTEM TUNING LOG  --  DARK-ENGINE
+ SYSTEM TUNING LOG  --  MSI Thin GF63 12HW
 ===============================================================================
  Machine     : MSI Thin GF63 12HW
  CPU         : Intel Core i5-12500H  (12C/16T = 4P + 8E, base 1.7 GHz)
@@ -13,17 +13,16 @@
  Applied     : 2026-09-13
  Applied by  : Claude Opus 5 (elevated PowerShell) + user (BIOS / Wi-Fi)
 
- COMPANION FILES (same folder):
-   verify-tuning.ps1   - checks every item below, prints OK / DRIFTED
-   reapply-tuning.ps1  - re-applies anything that got reset (idempotent)
-   advanced-tuning.ps1 - Tier 1 "next level" items [10]-[17] (see Section 7)
-                         + idle-RAM debloat items [20]-[25] (see Section 8)
-   pin-gpu-drivers.ps1 - stop Windows Update downgrading GPU drivers (item [19])
+ COMPANION FILE (same folder):
+   tune.ps1  - ONE script for everything below (since 2026-10-10; it
+               replaced verify-tuning / reapply-tuning / advanced-tuning /
+               pin-gpu-drivers .ps1). Each item = a check + a fix.
 
  QUICK USE:
-   Check what drifted   ->  powershell -ExecutionPolicy Bypass -File verify-tuning.ps1
-   Fix what drifted     ->  right-click reapply-tuning.ps1 -> Run as administrator
-
+   Menu                 ->  powershell -ExecutionPolicy Bypass -File tune.ps1
+   Check what drifted   ->  .\tune.ps1 verify          (no admin needed)
+   Fix what drifted     ->  .\tune.ps1 apply           (run as administrator)
+   GPU driver pin [19]  ->  .\tune.ps1 -Gpu PerDevice  (see Section 7)
 
 ===============================================================================
  SECTION 1 -- CHANGES APPLIED  (9 items)
@@ -580,14 +579,15 @@
 
  MOST LIKELY TO DRIFT:  [8] Cross-Device Resume, then [9] MIMO, then [4].
 
- Run verify-tuning.ps1 after any driver update, feature update, or debloat run.
+ Run '.\tune.ps1 verify' after any driver update, feature update, or debloat run.
 
 ===============================================================================
  SECTION 7 -- ADVANCED TUNING (Tier 1)          added 2026-10-06
 ===============================================================================
  Applied     : 2026-10-06  (elevated PowerShell)
- Scripts     : advanced-tuning.ps1  (items [10]-[17], idempotent, run elevated)
-               pin-gpu-drivers.ps1  (item [19], run elevated)
+ Scripts     : tune.ps1 apply -Group advanced   (items [10]-[18], elevated)
+               tune.ps1 -Gpu Global|PerDevice  (item [19], elevated)
+               (originally advanced-tuning.ps1 / pin-gpu-drivers.ps1)
  Goal        : perfect balance of EFFICIENCY + LONGEVITY + PERFORMANCE.
                The latency items [12][13] are AC-ONLY, so battery efficiency
                is deliberately left untouched.
@@ -656,7 +656,7 @@
  BEFORE   SkipOverDtimEnable = 1, LprxEnable = 1   (first-packet latency)
  AFTER    SkipOverDtimEnable = 0, LprxEnable = 0
  NOTE     Need an adapter restart; the script bounces WiFi (~5 s, auto-
-          reconnects). advanced-tuning.ps1 derives the Class subkey itself.
+          reconnects). tune.ps1 derives the Class subkey itself.
  PERSIST  Reset by Wi-Fi driver reinstall or Network reset (same as [9]/[10]).
 
 -------------------------------------------------------------------------------
@@ -723,7 +723,7 @@
           enforcement -- "takes precedence... the device cannot be installed" --
           which WU cannot bypass. WU's catalog still LISTS the old driver, but
           any install attempt is refused ("forbidden by system policy").
- MANUAL   update workflow:  -LiftPerDevice  ->  install + reboot  ->  -IncludePerDevice
+ MANUAL   update workflow:  tune.ps1 -Gpu Lift  ->  install + reboot  ->  tune.ps1 -Gpu PerDevice
  HIDDEN   2026-10-06: the deny blocks INSTALL but WU still LISTED the drivers
           ("will install with the next cumulative update"). Also HID them so the
           WU list is clean, via PSWindowsUpdate (elevated):
@@ -732,9 +732,9 @@
           Un-hide:  Show-WindowsUpdate -Title 'Intel*' -Confirm:$false
           A NEWER driver you actually want has a different title, so it is NOT
           hidden by this. Net: 3 layers = global exclude + per-device deny + hide.
- REAPPLY  pin-gpu-drivers.ps1 -IncludePerDevice     (global + per-device)
+ REAPPLY  .\tune.ps1 -Gpu PerDevice     (global + per-device)
  VERIFY   (Get-ItemProperty 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate').ExcludeWUDriversInQualityUpdate -> 1
- REVERT   pin-gpu-drivers.ps1 -Revert
+ REVERT   .\tune.ps1 -Gpu Revert
 
  STILL OPEN (deferred): Section 3a Arc driver version (keep it current manually
  now that WU can't touch it), Section 5 PL1 35->40 W now the Arc is live,
@@ -743,8 +743,8 @@
 ===============================================================================
  SECTION 8 -- IDLE-RAM / BACKGROUND DEBLOAT       added 2026-10-10
 ===============================================================================
- Script      : advanced-tuning.ps1  (items [20]-[25], idempotent, run elevated)
-               [26] is HKCU -- set as the normal user (like [8])
+ Script      : tune.ps1 apply -Group debloat  (items [20]-[26], elevated)
+               [26] is HKCU -- applies to the account running the script
  Trigger     : idle RAM read 4.7 GB "in use" of 15.7 GB. Audit result: NOT a
                problem. Windows itself ~2.5 GB; the Claude desktop app alone was
                ~2.35 GB (14 Electron procs). svchost ~1.1 GB across ~70 hosts
@@ -758,7 +758,7 @@
  SYMPTOM  SysMain kept coming back to Automatic; [15] kept looking "drifted".
  PROOF    Event 7040 timeline, 2026-10-10:
             19:07:19  SysMain auto -> disabled        (manual, baseline 4.5)
-            19:23     [15] reported OFF -> re-applied by advanced-tuning.ps1
+            19:23     [15] reported OFF -> re-applied by advanced-tuning.ps1 (now tune.ps1)
             19:23:59  SysMain disabled -> auto start  (same second as [15])
           And 2026-10-06 00:59:54 the identical flip, between two reboots on
           the day Section 7 was first applied. (First blamed on the 26H2
@@ -772,10 +772,10 @@
           part with no value on NVMe -- is switched off:
             Disable-MMAgent -ApplicationPreLaunch
             Disable-MMAgent -ApplicationLaunchPrefetching
-          advanced-tuning.ps1 [15] now enforces all of this; verify-tuning.ps1
-          checks SysMain=Automatic (any user) + MMAgent flags (elevated).
+          tune.ps1 [15] enforces all of this: SysMain=Automatic is checked
+          for any user, the MMAgent flags when elevated.
  REVERT   (if you ever want SysMain fully off) Disable SysMain AND accept
-          compression off -- drop [15] from advanced-tuning.ps1 first.
+          compression off -- remove the three [15] items from tune.ps1 first.
 
 -------------------------------------------------------------------------------
  [20] MapsBroker (Downloaded Maps Manager) -> Disabled      APPLIED 2026-10-10
