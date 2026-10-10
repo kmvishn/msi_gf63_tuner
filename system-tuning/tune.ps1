@@ -350,8 +350,12 @@ Add-Item 14 advanced 'Hidden Wi-Fi savers off (SkipOverDtim, Lprx)' {
 #           Enable-MMAgent turns SysMain back on, and disabling SysMain silently
 #           turns compression off -- the old baseline (SysMain disabled) and this
 #           item undid each other on every run.
-#      DECISION: keep SysMain ON for compression, but switch off its app
-#           prelaunch/prefetch (the part with no value on an NVMe drive).
+#      DECISION: keep SysMain ON for compression, but switch off app PRELAUNCH
+#           (loading apps into RAM before you open them).
+#      PREFETCH stays on: on build 26300 'Disable-MMAgent
+#           -ApplicationLaunchPrefetching' fails with Windows error 50 ("The
+#           request is not supported"). Harmless -- prefetch only keeps small
+#           launch traces in C:\Windows\Prefetch; it doesn't hold RAM.
 #      REVERT (SysMain fully off): accept compression off; remove these 3 items.
 Add-Item 15 advanced 'SysMain Automatic + Running (hosts Memory Compression)' {
     $s = Get-Service SysMain -EA 0; Res ($s.StartType -eq 'Automatic' -and $s.Status -eq 'Running') "$($s.StartType)/$($s.Status)"
@@ -359,13 +363,9 @@ Add-Item 15 advanced 'SysMain Automatic + Running (hosts Memory Compression)' {
 Add-Item 15 advanced 'Memory Compression on' {
     $v = (Get-MMAgent -EA Stop).MemoryCompression; Res $v $v
 } { Enable-MMAgent -MemoryCompression } -Admin
-Add-Item 15 advanced 'App prelaunch + launch prefetch off (SysMain lean)' {
-    $m = Get-MMAgent -EA Stop; Res (-not $m.ApplicationPreLaunch -and -not $m.ApplicationLaunchPrefetching) "prelaunch=$($m.ApplicationPreLaunch) prefetch=$($m.ApplicationLaunchPrefetching)"
-} {
-    $m = Get-MMAgent -EA Stop
-    if ($m.ApplicationPreLaunch) { Disable-MMAgent -ApplicationPreLaunch }
-    if ($m.ApplicationLaunchPrefetching) { Disable-MMAgent -ApplicationLaunchPrefetching }
-} -Admin
+Add-Item 15 advanced 'App prelaunch off (SysMain lean)' {
+    $v = (Get-MMAgent -EA Stop).ApplicationPreLaunch; Res (-not $v) "prelaunch=$v"
+} { Disable-MMAgent -ApplicationPreLaunch } -Admin
 
 # [16] Telemetry scheduled tasks off.
 #      WHY: DiagTrack (telemetry service) is disabled in 4.5, but these tasks

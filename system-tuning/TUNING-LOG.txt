@@ -425,7 +425,7 @@
 
  Performance / indexing
    (SysMain                 REMOVED 2026-10-10 -- hosts Memory Compression [15];
-                            kept ON with prefetch/prelaunch off, see Section 8)
+                            kept ON with app prelaunch off, see Section 8)
    WSearch                  Windows Search        [Everything used instead]
    TrkWks                   Distributed Link Tracking Client
 
@@ -668,7 +668,7 @@
  BEFORE   MemoryCompression = False     AFTER  MemoryCompression = True
  REAPPLY  Enable-MMAgent -MemoryCompression
  NOTE     Requires SysMain ON -- see Section 8 "CONFLICT FOUND". 2026-10-10:
-          SysMain kept, prefetch/prelaunch disabled instead.
+          SysMain kept, app prelaunch disabled instead.
  VERIFY   (Get-MMAgent).MemoryCompression   -> True
  REVERT   Disable-MMAgent -MemoryCompression    (not recommended on 16 GB)
 
@@ -771,7 +771,9 @@
           baseline disable list and kept ON, but its app preloading -- the
           part with no value on NVMe -- is switched off:
             Disable-MMAgent -ApplicationPreLaunch
-            Disable-MMAgent -ApplicationLaunchPrefetching
+            Disable-MMAgent -ApplicationLaunchPrefetching   <- FAILS on build
+              26300 (Win error 50, "not supported"); prefetch left on --
+              harmless, it only keeps launch traces in C:\Windows\Prefetch.
           tune.ps1 [15] enforces all of this: SysMain=Automatic is checked
           for any user, the MMAgent flags when elevated.
  REVERT   (if you ever want SysMain fully off) Disable SysMain AND accept

@@ -152,7 +152,7 @@ Tuning that predates this project, kept enforced:
 | 12 | PCIe ASPM off, **AC only** | Lower wake latency for the NVMe drive. |
 | 13 | Disk idle timeout never, **AC only** | A spin-down timer only adds stalls on NVMe. |
 | 14 | Hidden Intel Wi-Fi power savers off | `SkipOverDtimEnable` and `LprxEnable` let the radio sleep through beacons. |
-| 15 | **Memory Compression on**, SysMain on with its prefetch/prelaunch off | See [Known gotchas](#known-gotchas). |
+| 15 | **Memory Compression on**, SysMain on with app prelaunch off | See [Known gotchas](#known-gotchas). |
 | 16 | Telemetry scheduled tasks off | CEIP, Compatibility Appraiser and DmClient kept running even with DiagTrack disabled. |
 | 17 | Realtek Ethernet EEE / Green / Power Saving off | Caused link drops when docked. |
 | 18 | WSL2 `autoMemoryReclaim=gradual`, `sparseVhd=true` | **Check only.** Edit `%USERPROFILE%\.wslconfig` by hand, then `wsl --shutdown`. |
@@ -215,7 +215,7 @@ These came up and were rejected on purpose, so they don't get re-investigated:
 SysMain service. Turning compression on switches SysMain back on, and
 disabling SysMain silently turns compression off. When both "SysMain disabled"
 and "compression on" were in this tuning, each run undid the other. The fix:
-keep SysMain **on**, but switch off its app prelaunch and prefetch, the part
+keep SysMain **on**, but switch off app prelaunch, the part
 people usually disable it for. Compression keeps a 16 GB machine running WSL
 off the pagefile.
 
