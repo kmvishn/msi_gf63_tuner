@@ -152,16 +152,31 @@ Add-Item 2 core 'Max processor state AC = 100%' {
     $v = AcValue SUB_PROCESSOR PROCTHROTTLEMAX; Res ($v -eq '0x00000064') $v
 } { Set-AcValue SUB_PROCESSOR PROCTHROTTLEMAX 100 }
 
-# [3] Fast Startup (hiberboot) off.
-#     WHY: the flag was on while hibernation itself was off (this laptop only
-#          has Modern Standby) -- inert but misleading; keeps shutdown a real
-#          cold boot. REVERT: HiberbootEnabled=1; powercfg /h on
+# [3] Hibernation ON, Fast Startup OFF  (split 2026-10-10).
+#     Originally [3] turned BOTH off. Hibernation is back by request: this
+#     laptop has Modern Standby (S0) only -- no S3 -- so hibernate is the only
+#     zero-drain way to suspend with apps left open (e.g. in a bag overnight).
+#     Fast Startup stays off: it makes "Shut down" a half-hibernate, so drivers
+#     and services never get a clean restart -- fixes that need a real cold
+#     boot wouldn't stick.
+#     GOTCHA: 'powercfg /h on' can flip HiberbootEnabled back to 1, so the
+#             hibernation fix re-asserts Fast Startup off right after.
+#     COST: C:\hiberfil.sys (~40% of RAM, ~6.3 GB). Type 'full' is required for
+#           real hibernate ('reduced' only supports Fast Startup).
+#     REVERT: powercfg /h off   (removes hiberfil.sys and the Hibernate option)
+Add-Item 3 core 'Hibernation available (full hiberfil)' {
+    $v = RegVal 'HKLM:\SYSTEM\CurrentControlSet\Control\Power' HibernateEnabled; Res ($v -eq 1) $v
+} {
+    powercfg /h on 2>&1 | Out-Null
+    powercfg /h /type full 2>&1 | Out-Null
+    Set-Dword 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power' HiberbootEnabled 0
+}
 Add-Item 3 core 'Fast Startup (hiberboot) off' {
     $v = RegVal 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power' HiberbootEnabled; Res ($v -eq 0) $v
-} {
-    Set-Dword 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power' HiberbootEnabled 0
-    powercfg /h off 2>&1 | Out-Null
-}
+} { Set-Dword 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power' HiberbootEnabled 0 }
+Add-Item 3 core 'Hibernate shown in the Start power menu' {
+    $v = RegVal 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FlyoutMenuSettings' ShowHibernateOption; Res ($v -eq 1) $v
+} { Set-Dword 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FlyoutMenuSettings' ShowHibernateOption 1 }
 
 # [4] IP Helper (iphlpsvc) Automatic + Running.
 #     WHY: ROOT CAUSE of Tailscale failing at boot -- a debloat had disabled it.

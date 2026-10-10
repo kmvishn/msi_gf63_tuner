@@ -97,8 +97,17 @@
  BEFORE    HiberbootEnabled = 1   (hibernation off, no hiberfil.sys)
  AFTER     HiberbootEnabled = 0   (hibernation off, no hiberfil.sys)
 
- NOTE      This machine only supports S0 Modern Standby. S3 and Hibernate are
-           unavailable. If you ever want hibernate back: powercfg /h on
+ NOTE      This machine only supports S0 Modern Standby (no S3). Hibernate IS
+           supported -- 'powercfg /a' says "Hibernation has not been enabled",
+           i.e. switched off, not missing. (Earlier wording here said it was
+           unavailable -- wrong; corrected 2026-10-10.)
+ CHANGED   2026-10-10: HIBERNATION BACK ON by request; Fast Startup stays off.
+           tune.ps1 [3] now enforces: HibernateEnabled=1 (powercfg /h on,
+           /type full), HiberbootEnabled=0, Hibernate in the power menu.
+           WHY: with Modern Standby only, hibernate is the one zero-drain way
+           to suspend with apps open. Cost: hiberfil.sys ~40% of RAM (~6.3 GB).
+           GOTCHA: 'powercfg /h on' can flip HiberbootEnabled back to 1 -- the
+           fix re-asserts it to 0 right after.
 
  REAPPLY (elevated)
    Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power' `

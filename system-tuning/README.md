@@ -126,7 +126,7 @@ Item numbers match `TUNING-LOG.txt`, which has the full reasoning for each one.
 |---|---|---|
 | 1 | Pagefile fixed at 4096 / 16384 MB | The 1 GB system-managed pagefile let WSL2 (12 GB + swap) exhaust the commit limit. Needs a reboot to resize. |
 | 2 | Max processor state on AC = 100% | It was 99%, the legacy trick for capping Turbo. Battery value untouched. |
-| 3 | Fast Startup off | The flag was on even though hibernation was off. Shutdown stays a real cold boot. |
+| 3 | **Hibernation on**, Fast Startup off | Hibernate is the only zero-drain way to suspend on this Modern-Standby-only laptop (it uses about 6.3 GB of disk for `hiberfil.sys`). Fast Startup stays off so Shut down is still a real cold boot. |
 | 4 | **IP Helper** Automatic + Running | **Root cause of Tailscale failing at every boot.** A debloat had disabled it. |
 | 5 | Shadow Copy storage 10 GB + System Restore | Restore points were being aborted (Volsnap Event 36). |
 | 6 | Intel Computing Improvement Program removed | Telemetry using about 345 MB (`esrv`). An Intel driver bundle can bring it back. |
