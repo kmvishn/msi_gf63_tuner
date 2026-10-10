@@ -11,6 +11,7 @@
 #    [13] Disk   -> Idle timeout 0 on AC      (3g     pointless spin-down stall)
 #    [14] Wi-Fi  -> SkipOverDtim/Lprx off     (3k     first-packet latency)
 #    [15] RAM    -> Memory Compression ON      (26H2   more effective RAM on 16GB)
+#                   + SysMain kept ON (hosts compression), its prefetch/prelaunch OFF
 #    [16] Tasks  -> telemetry sched tasks off  (3h     CEIP/Appraiser/DmClient/OneDC)
 #    [17] LAN    -> Realtek EEE/Green/PS off    (3j     dock link renegotiation)
 #
@@ -126,12 +127,30 @@ try {
 # --- [15] Memory Compression -> enabled -----------------------------------
 #  On a 16 GB machine running agents + WSL, compression trades a little CPU for
 #  materially more effective RAM. Some debloat scripts disable it; re-enable.
+#  Compression is hosted by SysMain: Enable-MMAgent flips SysMain back to
+#  Automatic, and disabling SysMain silently turns compression off. So SysMain
+#  stays ON, and only its prefetch/prelaunch (the part people dislike) is cut.
 try {
+    $sm = Get-Service SysMain -EA Stop
+    if ($sm.StartType -eq 'Automatic' -and $sm.Status -eq 'Running') { Same '[15] SysMain Automatic/Running (hosts compression)' }
+    elseif ($PSCmdlet.ShouldProcess('SysMain','set Automatic + start (required for compression)')) {
+        Set-Service SysMain -StartupType Automatic -EA Stop
+        Start-Service SysMain -EA Stop
+        Did '[15] SysMain -> Automatic + started (required for Memory Compression)'
+    }
     $mm = Get-MMAgent
     if ($mm.MemoryCompression) { Same '[15] Memory Compression already enabled' }
     elseif ($PSCmdlet.ShouldProcess('MMAgent','Enable-MMAgent -MemoryCompression')) {
         Enable-MMAgent -MemoryCompression -EA Stop
         Did '[15] Memory Compression -> ENABLED (effective on next compressible pressure)'
+    }
+    foreach ($f in 'ApplicationPreLaunch','ApplicationLaunchPrefetching') {
+        if (-not $mm.$f) { Same "[15] $f already off" }
+        elseif ($PSCmdlet.ShouldProcess('MMAgent',"Disable-MMAgent -$f")) {
+            $p = @{ $f = $true }
+            Disable-MMAgent @p -EA Stop
+            Did "[15] $f -> off (no app preloading)"
+        }
     }
 } catch { Oops "[15] $($_.Exception.Message)" }
 
@@ -176,9 +195,12 @@ try {
     if (-not $eth) { Same '[17] no Realtek Ethernet adapter present (skipped)' }
     else {
         foreach ($nic in $eth) {
-            foreach ($kw in 'Energy-Efficient Ethernet','Green Ethernet','Power Saving Mode','*EEE','EnableGreenEthernet','PowerSavingMode') {
-                $prop = Get-NetAdapterAdvancedProperty -Name $nic.Name -EA 0 |
-                        Where-Object { $_.DisplayName -eq $kw -or $_.RegistryKeyword -eq $kw }
+            # DisplayName and RegistryKeyword aliases can hit the same property -- dedupe
+            $kws = 'Energy-Efficient Ethernet','Green Ethernet','Power Saving Mode','*EEE','EnableGreenEthernet','PowerSavingMode'
+            $props = Get-NetAdapterAdvancedProperty -Name $nic.Name -EA 0 |
+                     Where-Object { $kws -contains $_.DisplayName -or $kws -contains $_.RegistryKeyword } |
+                     Sort-Object RegistryKeyword -Unique
+            foreach ($prop in @($props)) {
                 foreach ($pr in $prop) {
                     $offVal = ($pr.ValidDisplayValues | Where-Object { $_ -match 'Disabl|Off' } | Select-Object -First 1)
                     if (-not $offVal) { $offVal = 'Disabled' }
@@ -311,7 +333,8 @@ Write-Host "--- verify ---" -ForegroundColor White
 "  Last-Access    : {0}" -f ((fsutil behavior query disablelastaccess) -join ' ')
 "  ASPM AC        : {0}" -f ((powercfg /query SCHEME_CURRENT SUB_PCIEXPRESS ASPM | Select-String 'Current AC').Line -replace '.*: ','')
 "  DiskIdle AC    : {0}" -f ((powercfg /query SCHEME_CURRENT SUB_DISK DISKIDLE | Select-String 'Current AC').Line -replace '.*: ','')
-"  MemCompression : {0}" -f (Get-MMAgent).MemoryCompression
+$mmv = Get-MMAgent
+"  MemCompression : {0}   (prelaunch {1}, prefetch {2}; SysMain {3})" -f $mmv.MemoryCompression, $mmv.ApplicationPreLaunch, $mmv.ApplicationLaunchPrefetching, (Get-Service SysMain).StartType
 $ceip = Get-ScheduledTask -TaskName 'Consolidator' -EA 0
 "  CEIP task      : {0}" -f $(if($ceip){$ceip.State}else{'absent'})
 "  MapsBroker     : {0}" -f (Get-Service MapsBroker -EA 0).StartType

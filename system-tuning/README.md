@@ -81,9 +81,11 @@ Expect ~100–300 MB and fewer background wakeups, not a big win.
 - **[25]** Game DVR background capture off (policy)
 - **[26]** Taskbar search box hidden (HKCU; SearchHost loads on demand)
 
-**Drift note:** the **26H2 feature update re-enabled `SysMain`** (Event 7040,
-2026-10-06). It's the first observed baseline-service reset — run
-`verify-tuning.ps1` after every feature update.
+**Conflict fixed — `SysMain` vs Memory Compression [15]:** compression is
+hosted by SysMain, so `Enable-MMAgent` kept flipping SysMain back to Automatic
+and the baseline kept disabling it (killing compression). Resolved in favour of
+compression: **SysMain is no longer in the disable list** — it stays on, with
+its app prefetch/prelaunch turned off via `Disable-MMAgent`.
 
 ## ⚠️ Caveats — this is NOT a universal optimizer
 
@@ -91,7 +93,7 @@ Expect ~100–300 MB and fewer background wakeups, not a big win.
   service names, a Wi-Fi adapter literally named `WiFi`, Arc A370M, etc.
 - **`reapply -IncludeBaseline` is opinionated** and disables services that are
   often wanted elsewhere — including **`Spooler`** (printing), **`WSearch`**
-  (Windows Search), **`SysMain`**, and **`ssh-agent`**. Don't run it blind on
+  (Windows Search), and **`ssh-agent`**. Don't run it blind on
   another PC.
 - `ssh-agent` is in the disable list. If you use SSH keys via the agent:
   `Set-Service ssh-agent -StartupType Manual`.

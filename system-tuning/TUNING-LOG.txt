@@ -425,7 +425,8 @@
    WSAIFabricSvc            Windows AI Components Host
 
  Performance / indexing
-   SysMain                  SysMain (superfetch)  [Everything used instead]
+   (SysMain                 REMOVED 2026-10-10 -- hosts Memory Compression [15];
+                            kept ON with prefetch/prelaunch off, see Section 8)
    WSearch                  Windows Search        [Everything used instead]
    TrkWks                   Distributed Link Tracking Client
 
@@ -468,7 +469,7 @@
      'lfsvc','lmhosts','MSI Sendevsvc','NahimicService','NetTcpPortSharing',
      'O+Connect Service','OplusRemoteService','PcaSvc','QWAVE','RemoteAccess',
      'RemoteRegistry','shpamsvc','Spooler','SSDPSRV','ssh-agent','StiSvc',
-     'SysMain','TrkWks','tzautoupdate','WbioSrvc','wercplsupport','WerSvc',
+     'TrkWks','tzautoupdate','WbioSrvc','wercplsupport','WerSvc',
      'whesvc','wisvc','WMIRegistrationService','WSAIFabricSvc','WSearch',
      'XblAuthManager','XblGameSave','XboxGipSvc','XboxNetApiSvc')
    foreach ($s in $svc) { Set-Service $s -StartupType Disabled -ErrorAction SilentlyContinue }
@@ -570,8 +571,9 @@
  Re-running a debloat script    [4] iphlpsvc -> Tailscale breaks again
  Windows feature update         [8] Cross-Device Resume (likely)
                                 [7] Defender exclusions (occasionally)
-                                4.5 SysMain -> Automatic  (OBSERVED: 26H2
-                                    upgrade 2026-10-06, see Section 8)
+ Enable-MMAgent (item [15])     SysMain -> Automatic + started  (by design:
+                                SysMain hosts compression -- see Section 8)
+ Disabling SysMain              [15] Memory Compression silently OFF
  Intel driver bundle install    [6] Intel Computing Improvement Program returns
  Power plan reset / new plan    [2] PROCTHROTTLEMAX, [12] ASPM, [13] DiskIdle
  System Restore rollback        potentially all of them
@@ -665,6 +667,8 @@
           more hard paging to the DRAM-less SSD. Hurts efficiency AND SSD life.
  BEFORE   MemoryCompression = False     AFTER  MemoryCompression = True
  REAPPLY  Enable-MMAgent -MemoryCompression
+ NOTE     Requires SysMain ON -- see Section 8 "CONFLICT FOUND". 2026-10-10:
+          SysMain kept, prefetch/prelaunch disabled instead.
  VERIFY   (Get-MMAgent).MemoryCompression   -> True
  REVERT   Disable-MMAgent -MemoryCompression    (not recommended on 16 GB)
 
@@ -749,18 +753,29 @@
                returns territory -- baseline 4.5 already covers the big items.
 
 -------------------------------------------------------------------------------
- DRIFT EVENT -- SysMain re-enabled by the 26H2 feature update
+ CONFLICT FOUND -- baseline 4.5 "SysMain Disabled" vs [15] "Compression ON"
 -------------------------------------------------------------------------------
- FOUND    2026-10-10: SysMain Running / Automatic (baseline 4.5 says Disabled).
- CAUSE    System log Event 7040, 2026-10-06 00:59:54:
-            "start type of the SysMain service was changed from disabled to
-             auto start"
-          ~40 min after "Windows 11, version 26H2" finished installing (00:17)
-          -- feature-update post-setup restores default service config.
-          Only SysMain flipped; the other baseline services survived.
- FIXED    2026-10-10 19:07  Stop-Service SysMain; Set-Service ... Disabled
- LESSON   Run verify-tuning.ps1 after EVERY feature update -- [4.5] would
-          have flagged this. Added to Section 6.
+ SYMPTOM  SysMain kept coming back to Automatic; [15] kept looking "drifted".
+ PROOF    Event 7040 timeline, 2026-10-10:
+            19:07:19  SysMain auto -> disabled        (manual, baseline 4.5)
+            19:23     [15] reported OFF -> re-applied by advanced-tuning.ps1
+            19:23:59  SysMain disabled -> auto start  (same second as [15])
+          And 2026-10-06 00:59:54 the identical flip, between two reboots on
+          the day Section 7 was first applied. (First blamed on the 26H2
+          upgrade -- WRONG; the timing matches our own script, not setup.)
+ CAUSE    Memory Compression is hosted by SysMain. Enable-MMAgent sets SysMain
+          to Automatic and starts it; disabling SysMain turns compression off.
+          The two items cannot both hold -- each run undid the other.
+ DECISION 2026-10-10: keep compression (16 GB + WSL memory=12GB, DRAM-less
+          SSD -> paging is the expensive path). SysMain is REMOVED from the
+          baseline disable list and kept ON, but its app preloading -- the
+          part with no value on NVMe -- is switched off:
+            Disable-MMAgent -ApplicationPreLaunch
+            Disable-MMAgent -ApplicationLaunchPrefetching
+          advanced-tuning.ps1 [15] now enforces all of this; verify-tuning.ps1
+          checks SysMain=Automatic (any user) + MMAgent flags (elevated).
+ REVERT   (if you ever want SysMain fully off) Disable SysMain AND accept
+          compression off -- drop [15] from advanced-tuning.ps1 first.
 
 -------------------------------------------------------------------------------
  [20] MapsBroker (Downloaded Maps Manager) -> Disabled      APPLIED 2026-10-10
@@ -795,7 +810,7 @@
  REVERT   Enable-ScheduledTask -TaskPath <path> -TaskName <name>
 
 -------------------------------------------------------------------------------
- [23] EDGE STARTUP BOOST + BACKGROUND MODE -> off           SCRIPTED (policy)
+ [23] EDGE STARTUP BOOST + BACKGROUND MODE -> off           APPLIED 2026-10-10
 -------------------------------------------------------------------------------
  WHY      Edge auto-launched at login (HKCU Run: MicrosoftEdgeAutoLaunch_*,
           --no-startup-window) and keeps processes alive after close.
@@ -807,7 +822,7 @@
  REVERT   Remove-ItemProperty HKLM:\SOFTWARE\Policies\Microsoft\Edge -Name StartupBoostEnabled,BackgroundModeEnabled
 
 -------------------------------------------------------------------------------
- [24] DELIVERY OPTIMIZATION -> peer-to-peer off             SCRIPTED (policy)
+ [24] DELIVERY OPTIMIZATION -> peer-to-peer off             APPLIED 2026-10-10
 -------------------------------------------------------------------------------
  WHY      DoSvc seeds Windows/Store updates to other PCs (upload bandwidth +
           disk reads). The service itself is protected -- don't disable it.
@@ -816,7 +831,7 @@
  REVERT   Remove-ItemProperty HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization -Name DODownloadMode
 
 -------------------------------------------------------------------------------
- [25] GAME DVR BACKGROUND CAPTURE -> off                    SCRIPTED (policy)
+ [25] GAME DVR BACKGROUND CAPTURE -> off                    APPLIED 2026-10-10
 -------------------------------------------------------------------------------
  WHY      HKCU GameConfigStore GameDVR_Enabled = 1 -- capture hooks loaded in
           games for "record what happened". Not used.

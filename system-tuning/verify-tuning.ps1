@@ -111,7 +111,7 @@ $baselineServices = @(
     'lfsvc','lmhosts','MSI Sendevsvc','NahimicService','NetTcpPortSharing',
     'O+Connect Service','OplusRemoteService','PcaSvc','QWAVE','RemoteAccess',
     'RemoteRegistry','shpamsvc','Spooler','SSDPSRV','ssh-agent','StiSvc',
-    'SysMain','TrkWks','tzautoupdate','WbioSrvc','wercplsupport','WerSvc',
+    'TrkWks','tzautoupdate','WbioSrvc','wercplsupport','WerSvc',
     'whesvc','wisvc','WMIRegistrationService','WSAIFabricSvc','WSearch',
     'XblAuthManager','XblGameSave','XboxGipSvc','XboxNetApiSvc')
 
@@ -133,10 +133,24 @@ if ($absent.Count) {
     Write-Host ("           skipped  : not installed -> {0}" -f ($absent -join ', ')) -ForegroundColor DarkGray
 }
 # Spot-check the five most important ones individually.
-foreach ($crit in @('DiagTrack','SysMain','WSearch','DSAService','DSAUpdateService')) {
+foreach ($crit in @('DiagTrack','WSearch','DSAService','DSAUpdateService')) {
     $s = Get-Service $crit -EA 0
     if ($s) { Check '4.5' "  $crit disabled" 'Disabled' $s.StartType "Set-Service $crit -StartupType Disabled" }
 }
+
+Write-Host ""
+Write-Host "--- Advanced tuning spot-checks (Section 7) ---" -ForegroundColor White
+
+# [15] Memory Compression is hosted by SysMain -- SysMain must stay ON
+#      (disabling it silently kills compression; see Section 8 drift event)
+$sm = Get-Service SysMain -EA 0
+Check 15 'SysMain Automatic (hosts Memory Compression)' 'Automatic' $sm.StartType 'Set-Service SysMain -StartupType Automatic; Start-Service SysMain'
+if ($elevated) {
+    $mm = Get-MMAgent
+    Check 15 'Memory Compression enabled'      'True'  $mm.MemoryCompression            'Enable-MMAgent -MemoryCompression'
+    Check 15 'App prelaunch off (SysMain lean)' 'False' $mm.ApplicationPreLaunch         'Disable-MMAgent -ApplicationPreLaunch'
+    Check 15 'App prefetch off (SysMain lean)'  'False' $mm.ApplicationLaunchPrefetching 'Disable-MMAgent -ApplicationLaunchPrefetching'
+} else { Skip 15 'Memory Compression / prefetch' 'needs elevation' }
 
 Write-Host ""
 Write-Host "--- Idle-RAM / background debloat (Section 8) ---" -ForegroundColor White

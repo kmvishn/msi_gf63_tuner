@@ -6,7 +6,7 @@
 #
 #  Usage:
 #    .\reapply-tuning.ps1                     # Section 1 items only (default)
-#    .\reapply-tuning.ps1 -IncludeBaseline    # also restore the 41 disabled
+#    .\reapply-tuning.ps1 -IncludeBaseline    # also restore the 39 disabled
 #                                             #   services + fsutil baseline
 #    .\reapply-tuning.ps1 -WhatIf             # show what would change, do nothing
 # =============================================================================
@@ -143,7 +143,7 @@ if ($IncludeBaseline) {
       'lfsvc','lmhosts','MSI Sendevsvc','NahimicService','NetTcpPortSharing',
       'O+Connect Service','OplusRemoteService','PcaSvc','QWAVE','RemoteAccess',
       'RemoteRegistry','shpamsvc','Spooler','SSDPSRV','ssh-agent','StiSvc',
-      'SysMain','TrkWks','tzautoupdate','WbioSrvc','wercplsupport','WerSvc',
+      'TrkWks','tzautoupdate','WbioSrvc','wercplsupport','WerSvc',
       'whesvc','wisvc','WMIRegistrationService','WSAIFabricSvc','WSearch',
       'XblAuthManager','XblGameSave','XboxGipSvc','XboxNetApiSvc')
     $n = 0
