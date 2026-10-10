@@ -10,7 +10,7 @@ machine-specific profile — read the caveats before running it on anything else
 |---|---|---|
 | [`verify-tuning.ps1`](verify-tuning.ps1) | **Read-only.** Checks every tuned item and prints `OK` / `DRIFTED`. Changes nothing. | No (elevate for full detail — Defender exclusions + shadow storage) |
 | [`reapply-tuning.ps1`](reapply-tuning.ps1) | **Idempotent.** Re-applies anything that got reset. Skips what's already correct. | Yes |
-| [`advanced-tuning.ps1`](advanced-tuning.ps1) | **Idempotent.** Tier-1 "next level" items [10]–[17]: Wi-Fi 5 GHz, NTFS last-access off, PCIe ASPM / disk-idle off (AC only), memory compression on, telemetry tasks off, Realtek power-save off. | Yes |
+| [`advanced-tuning.ps1`](advanced-tuning.ps1) | **Idempotent.** Tier-1 "next level" items [10]–[17]: Wi-Fi 5 GHz, NTFS last-access off, PCIe ASPM / disk-idle off (AC only), memory compression on, telemetry tasks off, Realtek power-save off. Plus Section 8 idle-RAM debloat [20]–[25]. | Yes |
 | [`pin-gpu-drivers.ps1`](pin-gpu-drivers.ps1) | **Idempotent.** Item [19]: stop Windows Update downgrading the Intel GPU drivers (global exclude by default; `-IncludePerDevice` for a per-device hard-block; `-Revert`). | Yes |
 | [`TUNING-LOG.txt`](TUNING-LOG.txt) | Full rationale, before/after, verify, and revert commands for every item. The source of truth. | — |
 
@@ -63,6 +63,27 @@ so battery efficiency is untouched). See `TUNING-LOG.txt` Section 7 for the why.
   WHQL Intel driver over a manually-installed one. On **Home** (no `gpedit`) this
   is registry-only: `ExcludeWUDriversInQualityUpdate=1` +
   `SearchOrderConfig=0`, with an optional per-device `DenyDeviceIDs` hard-block.
+
+### Idle-RAM / background debloat — Section 8 (added 2026-10-10)
+
+Small, low-risk trims found during an idle-RAM audit (4.7 GB in use turned out
+to be normal — ~2.5 GB is Windows, the rest was the apps that were open).
+Expect ~100–300 MB and fewer background wakeups, not a big win.
+
+- **[20]** `MapsBroker` → Disabled
+- **[21]** `SharedAccess` (ICS) → **Manual**, not Disabled — it's trigger-started
+  by WSL / Hyper-V NAT, so seeing it *Running* is expected
+- **[22]** Leftover scheduled tasks off — Maps, XblGameSave, WER QueueReporting,
+  PcaPatchDbTask, FamilySafety, Nahimic (all belong to already-disabled features)
+- **[23]** Edge Startup Boost + background mode off (policy — Edge will say
+  "managed by your organization")
+- **[24]** Delivery Optimization P2P off (`DODownloadMode=0`, HTTP only)
+- **[25]** Game DVR background capture off (policy)
+- **[26]** Taskbar search box hidden (HKCU; SearchHost loads on demand)
+
+**Drift note:** the **26H2 feature update re-enabled `SysMain`** (Event 7040,
+2026-10-06). It's the first observed baseline-service reset — run
+`verify-tuning.ps1` after every feature update.
 
 ## ⚠️ Caveats — this is NOT a universal optimizer
 

@@ -2,7 +2,7 @@
 #  advanced-tuning.ps1  --  Tier 1 "next level" software tuning
 #  IDEMPOTENT + self-verifying: safe to run repeatedly. Skips what's correct.
 #  RUN AS ADMINISTRATOR.
-#  Companion to TUNING-LOG.txt  (documents these as items [10]-[14], Section 7)
+#  Companion to TUNING-LOG.txt  (items [10]-[17] Section 7, [20]-[25] Section 8)
 #
 #  Applies the still-pending, vetted open items from TUNING-LOG Section 3:
 #    [10] Wi-Fi  -> Prefer 5 GHz band        (3f/3b  ~4x throughput vs 2.4 GHz)
@@ -13,6 +13,15 @@
 #    [15] RAM    -> Memory Compression ON      (26H2   more effective RAM on 16GB)
 #    [16] Tasks  -> telemetry sched tasks off  (3h     CEIP/Appraiser/DmClient/OneDC)
 #    [17] LAN    -> Realtek EEE/Green/PS off    (3j     dock link renegotiation)
+#
+#  Section 8 -- idle-RAM / background debloat (2026-10-10):
+#    [20] Svc    -> MapsBroker Disabled         (offline maps updater, unused)
+#    [21] Svc    -> SharedAccess (ICS) Manual   (trigger-starts when WSL etc. need it)
+#    [22] Tasks  -> leftover sched tasks off    (Maps/Xbox/WER/PCA/FamilySafety/Nahimic)
+#    [23] Edge   -> Startup Boost + bg mode off (policy; Edge no longer preloads at login)
+#    [24] DO     -> Delivery Optimization P2P off (policy; HTTP-only downloads)
+#    [25] Game   -> Game DVR background capture off (policy)
+#    ([26] taskbar search hidden is HKCU -- printed as a normal-user note, like [8])
 #
 #  Usage:
 #    .\advanced-tuning.ps1                 # apply all (prompts before Wi-Fi restart)
@@ -26,6 +35,11 @@
 #    powercfg /setacvalueindex SCHEME_CURRENT SUB_PCIEXPRESS ASPM 1 ; powercfg /setactive SCHEME_CURRENT
 #    powercfg /setacvalueindex SCHEME_CURRENT SUB_DISK DISKIDLE 1200 ; powercfg /setactive SCHEME_CURRENT
 #    (set SkipOverDtimEnable / LprxEnable back to 1 under the Class key, then restart adapter)
+#    Set-Service MapsBroker -StartupType Automatic ; Set-Service SharedAccess -StartupType Automatic
+#    Remove-ItemProperty HKLM:\SOFTWARE\Policies\Microsoft\Edge -Name StartupBoostEnabled,BackgroundModeEnabled
+#    Remove-ItemProperty HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization -Name DODownloadMode
+#    Remove-ItemProperty HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR -Name AllowGameDVR
+#    (tasks [22]: Enable-ScheduledTask -TaskPath <path> -TaskName <name>)
 # =============================================================================
 [CmdletBinding(SupportsShouldProcess)]
 param(
@@ -180,6 +194,98 @@ try {
     }
 } catch { Oops "[17] $($_.Exception.Message)" }
 
+# =========================================================================
+#  SECTION 8 -- idle-RAM / background debloat (2026-10-10)
+# =========================================================================
+
+# --- [20] MapsBroker -> Disabled -------------------------------------------
+try {
+    $s = Get-Service MapsBroker -EA 0
+    if (-not $s) { Same '[20] MapsBroker not installed (skipped)' }
+    elseif ($s.StartType -eq 'Disabled') { Same '[20] MapsBroker already Disabled' }
+    elseif ($PSCmdlet.ShouldProcess('MapsBroker','disable')) {
+        Set-Service MapsBroker -StartupType Disabled -EA Stop
+        Stop-Service MapsBroker -Force -EA 0
+        Did '[20] MapsBroker -> Disabled'
+    }
+} catch { Oops "[20] $($_.Exception.Message)" }
+
+# --- [21] SharedAccess (ICS) -> Manual -------------------------------------
+#  Manual, NOT Disabled: it is RPC-trigger-started by whatever needs it
+#  (WSL / Hyper-V NAT, Mobile Hotspot). Running after boot is expected.
+try {
+    $s = Get-Service SharedAccess -EA 0
+    if (-not $s) { Same '[21] SharedAccess not installed (skipped)' }
+    elseif ($s.StartType -eq 'Manual') { Same '[21] SharedAccess already Manual' }
+    elseif ($PSCmdlet.ShouldProcess('SharedAccess','set Manual')) {
+        Set-Service SharedAccess -StartupType Manual -EA Stop
+        Did '[21] SharedAccess -> Manual (trigger-start on demand)'
+    }
+} catch { Oops "[21] $($_.Exception.Message)" }
+
+# --- [22] Leftover scheduled tasks -> disabled -----------------------------
+#  Each belongs to a feature already disabled in the baseline (MapsBroker,
+#  Xbox svcs, WerSvc, PcaSvc, NahimicService) or unused (Family Safety).
+try {
+    $tasks = @(
+        '\Microsoft\Windows\Maps\MapsToastTask',
+        '\Microsoft\Windows\Maps\MapsUpdateTask',
+        '\Microsoft\XblGameSave\XblGameSaveTask',
+        '\Microsoft\Windows\Windows Error Reporting\QueueReporting',
+        '\Microsoft\Windows\Application Experience\PcaPatchDbTask',
+        '\Microsoft\Windows\Shell\FamilySafetyMonitor',
+        '\Microsoft\Windows\Shell\FamilySafetyRefreshTask',
+        '\NahimicTask32',
+        '\NahimicTask64'
+    )
+    foreach ($t in $tasks) {
+        $leaf = Split-Path $t -Leaf; $path = (Split-Path $t -Parent).TrimEnd('\') + '\'
+        $st = Get-ScheduledTask -TaskName $leaf -TaskPath $path -EA 0
+        if (-not $st) { continue }                                   # not present on this build
+        if ($st.State -eq 'Disabled') { Same "[22] task already off: $leaf" }
+        elseif ($PSCmdlet.ShouldProcess($leaf,'disable scheduled task')) {
+            Disable-ScheduledTask -TaskName $leaf -TaskPath $path -EA Stop | Out-Null
+            Did "[22] task disabled: $leaf"
+        }
+    }
+} catch { Oops "[22] $($_.Exception.Message)" }
+
+# --- Policy helper for [23]-[25] -------------------------------------------
+function Set-PolicyDword($id, $key, $name, $value, $label) {
+    $cur = (Get-ItemProperty $key -Name $name -EA 0).$name
+    if ($cur -eq $value) { Same "[$id] $label already set" }
+    elseif ($PSCmdlet.ShouldProcess("$key\$name","set $value")) {
+        if (-not (Test-Path $key)) { New-Item $key -Force | Out-Null }
+        Set-ItemProperty $key -Name $name -Value $value -Type DWord
+        Did "[$id] $label"
+    }
+}
+
+# --- [23] Edge Startup Boost + background mode -> off ----------------------
+#  Stops Edge preloading at login / lingering after close. Side effect: Edge
+#  shows "Your browser is managed by your organization" (harmless).
+try {
+    $k = 'HKLM:\SOFTWARE\Policies\Microsoft\Edge'
+    Set-PolicyDword 23 $k 'StartupBoostEnabled'   0 'Edge Startup Boost -> off'
+    Set-PolicyDword 23 $k 'BackgroundModeEnabled' 0 'Edge background mode -> off'
+} catch { Oops "[23] $($_.Exception.Message)" }
+
+# --- [24] Delivery Optimization -> no peer-to-peer -------------------------
+#  DODownloadMode 0 = HTTP only (no LAN/Internet peers). DoSvc itself stays.
+try {
+    Set-PolicyDword 24 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization' 'DODownloadMode' 0 'Delivery Optimization -> HTTP only (P2P off)'
+} catch { Oops "[24] $($_.Exception.Message)" }
+
+# --- [25] Game DVR background capture -> off -------------------------------
+try {
+    Set-PolicyDword 25 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR' 'AllowGameDVR' 0 'Game DVR -> off'
+} catch { Oops "[25] $($_.Exception.Message)" }
+
+# --- [26] Taskbar search hidden (HKCU note) --------------------------------
+Write-Host ""
+Write-Host "[26] Taskbar search box is an HKCU setting -- run as YOUR normal user if it drifts:" -ForegroundColor Yellow
+Write-Host "      Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Search' -Name SearchboxTaskbarMode -Value 0 -Type DWord" -ForegroundColor Cyan
+
 # --- Apply Wi-Fi changes by bouncing the adapter --------------------------
 if ($wifiTouched -and -not $SkipWiFiRestart) {
     Write-Host ""
@@ -208,6 +314,11 @@ Write-Host "--- verify ---" -ForegroundColor White
 "  MemCompression : {0}" -f (Get-MMAgent).MemoryCompression
 $ceip = Get-ScheduledTask -TaskName 'Consolidator' -EA 0
 "  CEIP task      : {0}" -f $(if($ceip){$ceip.State}else{'absent'})
+"  MapsBroker     : {0}" -f (Get-Service MapsBroker -EA 0).StartType
+"  SharedAccess   : {0}" -f (Get-Service SharedAccess -EA 0).StartType
+"  Edge boost/bg  : {0}/{1}" -f (Get-ItemProperty HKLM:\SOFTWARE\Policies\Microsoft\Edge -EA 0).StartupBoostEnabled, (Get-ItemProperty HKLM:\SOFTWARE\Policies\Microsoft\Edge -EA 0).BackgroundModeEnabled
+"  DO mode        : {0}" -f (Get-ItemProperty HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization -EA 0).DODownloadMode
+"  AllowGameDVR   : {0}" -f (Get-ItemProperty HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR -EA 0).AllowGameDVR
 Write-Host ""
 Write-Host "  Tip: after it associates on 5 GHz, re-check link speed. If it stays on" -ForegroundColor DarkGray
 Write-Host "       2.4 GHz, your AP's 5 GHz SSID may be out of range or disabled." -ForegroundColor DarkGray

@@ -17,6 +17,7 @@
    verify-tuning.ps1   - checks every item below, prints OK / DRIFTED
    reapply-tuning.ps1  - re-applies anything that got reset (idempotent)
    advanced-tuning.ps1 - Tier 1 "next level" items [10]-[17] (see Section 7)
+                         + idle-RAM debloat items [20]-[25] (see Section 8)
    pin-gpu-drivers.ps1 - stop Windows Update downgrading GPU drivers (item [19])
 
  QUICK USE:
@@ -569,6 +570,8 @@
  Re-running a debloat script    [4] iphlpsvc -> Tailscale breaks again
  Windows feature update         [8] Cross-Device Resume (likely)
                                 [7] Defender exclusions (occasionally)
+                                4.5 SysMain -> Automatic  (OBSERVED: 26H2
+                                    upgrade 2026-10-06, see Section 8)
  Intel driver bundle install    [6] Intel Computing Improvement Program returns
  Power plan reset / new plan    [2] PROCTHROTTLEMAX, [12] ASPM, [13] DiskIdle
  System Restore rollback        potentially all of them
@@ -732,6 +735,115 @@
  STILL OPEN (deferred): Section 3a Arc driver version (keep it current manually
  now that WU can't touch it), Section 5 PL1 35->40 W now the Arc is live,
  RAM 16->32 GB (the real bottleneck), switchable-graphics AC default.
+
+===============================================================================
+ SECTION 8 -- IDLE-RAM / BACKGROUND DEBLOAT       added 2026-10-10
+===============================================================================
+ Script      : advanced-tuning.ps1  (items [20]-[25], idempotent, run elevated)
+               [26] is HKCU -- set as the normal user (like [8])
+ Trigger     : idle RAM read 4.7 GB "in use" of 15.7 GB. Audit result: NOT a
+               problem. Windows itself ~2.5 GB; the Claude desktop app alone was
+               ~2.35 GB (14 Electron procs). svchost ~1.1 GB across ~70 hosts
+               (normal split-host on >3.5 GB RAM), Defender ~340 MB. No leaks.
+ Gain        : small (~100-300 MB + fewer background wakeups). Diminishing-
+               returns territory -- baseline 4.5 already covers the big items.
+
+-------------------------------------------------------------------------------
+ DRIFT EVENT -- SysMain re-enabled by the 26H2 feature update
+-------------------------------------------------------------------------------
+ FOUND    2026-10-10: SysMain Running / Automatic (baseline 4.5 says Disabled).
+ CAUSE    System log Event 7040, 2026-10-06 00:59:54:
+            "start type of the SysMain service was changed from disabled to
+             auto start"
+          ~40 min after "Windows 11, version 26H2" finished installing (00:17)
+          -- feature-update post-setup restores default service config.
+          Only SysMain flipped; the other baseline services survived.
+ FIXED    2026-10-10 19:07  Stop-Service SysMain; Set-Service ... Disabled
+ LESSON   Run verify-tuning.ps1 after EVERY feature update -- [4.5] would
+          have flagged this. Added to Section 6.
+
+-------------------------------------------------------------------------------
+ [20] MapsBroker (Downloaded Maps Manager) -> Disabled      APPLIED 2026-10-10
+-------------------------------------------------------------------------------
+ WHY      Offline-maps updater; Maps app unused. Was Automatic (delayed).
+ REAPPLY  Set-Service MapsBroker -StartupType Disabled
+ REVERT   Set-Service MapsBroker -StartupType Automatic
+
+-------------------------------------------------------------------------------
+ [21] SharedAccess (Internet Connection Sharing) -> Manual  APPLIED 2026-10-10
+-------------------------------------------------------------------------------
+ WHY      Was Automatic + Running at boot for no visible reason.
+ NOTE     Manual, deliberately NOT Disabled. It has an RPC-interface start
+          trigger and restarted immediately after being stopped -- a client
+          (most likely WSL / Hyper-V NAT, or Mobile Hotspot) calls it. So
+          "Running" after boot is EXPECTED; only the StartType is checked.
+ REVERT   Set-Service SharedAccess -StartupType Automatic; Start-Service SharedAccess
+          (do this first if WSL networking ever breaks)
+
+-------------------------------------------------------------------------------
+ [22] LEFTOVER SCHEDULED TASKS -> disabled                  APPLIED 2026-10-10
+-------------------------------------------------------------------------------
+ Each belongs to a feature the baseline already killed -- pure wakeups with
+ nothing left to do:
+   \Microsoft\Windows\Maps\MapsToastTask, MapsUpdateTask       (-> [20])
+   \Microsoft\XblGameSave\XblGameSaveTask                      (Xbox svcs, 4.5)
+   \Microsoft\Windows\Windows Error Reporting\QueueReporting   (WerSvc, 4.5)
+   \Microsoft\Windows\Application Experience\PcaPatchDbTask    (PcaSvc, 4.5)
+   \Microsoft\Windows\Shell\FamilySafetyMonitor, ...RefreshTask (no parental ctl)
+   \NahimicTask32, \NahimicTask64                              (NahimicService, 4.5)
+ VERIFY   all 9 report State = Disabled
+ REVERT   Enable-ScheduledTask -TaskPath <path> -TaskName <name>
+
+-------------------------------------------------------------------------------
+ [23] EDGE STARTUP BOOST + BACKGROUND MODE -> off           SCRIPTED (policy)
+-------------------------------------------------------------------------------
+ WHY      Edge auto-launched at login (HKCU Run: MicrosoftEdgeAutoLaunch_*,
+          --no-startup-window) and keeps processes alive after close.
+ AFTER    HKLM\SOFTWARE\Policies\Microsoft\Edge
+            StartupBoostEnabled   = 0
+            BackgroundModeEnabled = 0
+ SIDE FX  Edge shows "Your browser is managed by your organization". Harmless.
+          (UI alternative: edge://settings/system -> both toggles off.)
+ REVERT   Remove-ItemProperty HKLM:\SOFTWARE\Policies\Microsoft\Edge -Name StartupBoostEnabled,BackgroundModeEnabled
+
+-------------------------------------------------------------------------------
+ [24] DELIVERY OPTIMIZATION -> peer-to-peer off             SCRIPTED (policy)
+-------------------------------------------------------------------------------
+ WHY      DoSvc seeds Windows/Store updates to other PCs (upload bandwidth +
+          disk reads). The service itself is protected -- don't disable it.
+ AFTER    HKLM\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization
+            DODownloadMode = 0   (HTTP only, no peers)
+ REVERT   Remove-ItemProperty HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization -Name DODownloadMode
+
+-------------------------------------------------------------------------------
+ [25] GAME DVR BACKGROUND CAPTURE -> off                    SCRIPTED (policy)
+-------------------------------------------------------------------------------
+ WHY      HKCU GameConfigStore GameDVR_Enabled = 1 -- capture hooks loaded in
+          games for "record what happened". Not used.
+ AFTER    HKLM\SOFTWARE\Policies\Microsoft\Windows\GameDVR  AllowGameDVR = 0
+ REVERT   Remove-ItemProperty HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR -Name AllowGameDVR
+
+-------------------------------------------------------------------------------
+ [26] TASKBAR SEARCH BOX -> hidden  (HKCU)                  APPLIED 2026-10-10
+-------------------------------------------------------------------------------
+ WHY      SearchHost + its WebView2 children held ~430 MB resident even with
+          WSearch (indexer) disabled. Hidden, SearchHost loads on demand;
+          typing in Start still searches.
+ AFTER    HKCU\Software\Microsoft\Windows\CurrentVersion\Search
+            SearchboxTaskbarMode = 0
+ REAPPLY  (normal user) Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Search' -Name SearchboxTaskbarMode -Value 0 -Type DWord
+
+-------------------------------------------------------------------------------
+ NOT APPLIED / LEFT ALONE  (recorded so they aren't re-investigated)
+-------------------------------------------------------------------------------
+ CoworkVMService (Claude desktop, MSIX) -- Set-Service fails "Access is denied"
+          even elevated: the packaged-service SDDL grants config rights only to
+          the package SID, not Administrators. Can be STOPPED, not
+          reconfigured; returns with each app update. Idle cost ~nil.
+ CrossDeviceResume process (~60 MB) -- setting already off ([8]); the shell
+          relaunches the process, so killing it doesn't stick.
+ Defender, Themes, FontCache, WpnService, UsoSvc, DoSvc service -- keep.
+ Power plan -- Balanced stays; High Performance = heat + battery for nothing.
 
 ===============================================================================
  END OF LOG

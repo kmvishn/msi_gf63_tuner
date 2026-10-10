@@ -139,6 +139,49 @@ foreach ($crit in @('DiagTrack','SysMain','WSearch','DSAService','DSAUpdateServi
 }
 
 Write-Host ""
+Write-Host "--- Idle-RAM / background debloat (Section 8) ---" -ForegroundColor White
+
+# [20] / [21] services
+$mb = Get-Service MapsBroker -EA 0
+if ($mb) { Check 20 'MapsBroker Disabled' 'Disabled' $mb.StartType 'Set-Service MapsBroker -StartupType Disabled' }
+else     { Skip 20 'MapsBroker' 'not installed' }
+$ics = Get-Service SharedAccess -EA 0
+if ($ics) { Check 21 'SharedAccess (ICS) Manual  (Running is fine -- trigger-started)' 'Manual' $ics.StartType 'Set-Service SharedAccess -StartupType Manual' }
+else      { Skip 21 'SharedAccess' 'not installed' }
+
+# [22] leftover scheduled tasks (absent = skipped, not drift)
+$s8tasks = @(
+    '\Microsoft\Windows\Maps\MapsToastTask',
+    '\Microsoft\Windows\Maps\MapsUpdateTask',
+    '\Microsoft\XblGameSave\XblGameSaveTask',
+    '\Microsoft\Windows\Windows Error Reporting\QueueReporting',
+    '\Microsoft\Windows\Application Experience\PcaPatchDbTask',
+    '\Microsoft\Windows\Shell\FamilySafetyMonitor',
+    '\Microsoft\Windows\Shell\FamilySafetyRefreshTask',
+    '\NahimicTask32',
+    '\NahimicTask64')
+$s8present = @($s8tasks | ForEach-Object {
+    Get-ScheduledTask -TaskName (Split-Path $_ -Leaf) -TaskPath ((Split-Path $_ -Parent).TrimEnd('\') + '\') -EA 0 } | Where-Object { $_ })
+$s8off = @($s8present | Where-Object State -eq 'Disabled')
+Check 22 "Leftover scheduled tasks disabled ($($s8present.Count) present)" $s8present.Count $s8off.Count 'run advanced-tuning.ps1'
+foreach ($t in $s8present) {
+    if ($t.State -ne 'Disabled') { Write-Host ("           drifted  : {0}{1} = {2}" -f $t.TaskPath, $t.TaskName, $t.State) -ForegroundColor Yellow }
+}
+
+# [23]-[25] machine policies
+$edge = Get-ItemProperty 'HKLM:\SOFTWARE\Policies\Microsoft\Edge' -EA 0
+Check 23 'Edge Startup Boost off (policy)'  '0' $edge.StartupBoostEnabled   'run advanced-tuning.ps1'
+Check 23 'Edge background mode off (policy)' '0' $edge.BackgroundModeEnabled 'run advanced-tuning.ps1'
+$do = (Get-ItemProperty 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization' -EA 0).DODownloadMode
+Check 24 'Delivery Optimization P2P off (DODownloadMode=0)' '0' $do 'run advanced-tuning.ps1'
+$gdvr = (Get-ItemProperty 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\GameDVR' -EA 0).AllowGameDVR
+Check 25 'Game DVR off (policy)' '0' $gdvr 'run advanced-tuning.ps1'
+
+# [26] taskbar search (HKCU)
+$sb = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Search' -EA 0).SearchboxTaskbarMode
+Check 26 'Taskbar search hidden' '0' $sb "Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Search' -Name SearchboxTaskbarMode -Value 0"
+
+Write-Host ""
 Write-Host "--- Open items (Section 3) -- informational, not failures ---" -ForegroundColor White
 $arc = Get-PnpDevice -Class Display -EA 0 | Where-Object FriendlyName -match 'Arc'
 if ($arc) { Write-Host ("  Arc A370M dGPU status : {0}" -f $arc.Status) -ForegroundColor $(if($arc.Status -eq 'OK'){'Green'}else{'Yellow'}) }
