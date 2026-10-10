@@ -12,7 +12,7 @@
 #    .\tune.ps1 verify                   # check everything, change nothing
 #    .\tune.ps1 apply                    # fix everything that drifted
 #    .\tune.ps1 apply -Group debloat     # only one group (core, baseline,
-#                                        #   advanced, debloat; comma-separate)
+#                                        #   advanced, debloat, gaming; comma-separate)
 #    .\tune.ps1 apply -Item 15,23        # only specific item IDs
 #    .\tune.ps1 apply -WhatIf            # show what would change, do nothing
 #    .\tune.ps1 apply -SkipWiFiRestart   # don't bounce the Wi-Fi adapter
@@ -25,7 +25,7 @@ param(
     [Parameter(Position = 0)]
     [ValidateSet('Menu', 'Verify', 'Apply')]
     [string]$Mode = 'Menu',
-    [ValidateSet('core', 'baseline', 'advanced', 'debloat')]
+    [ValidateSet('core', 'baseline', 'advanced', 'debloat', 'gaming')]
     [string[]]$Group,
     [string[]]$Item,
     [ValidateSet('Global', 'PerDevice', 'Lift', 'Revert')]
@@ -494,6 +494,33 @@ Add-Item 26 debloat 'Taskbar search box hidden (HKCU)' {
     $v = RegVal 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Search' SearchboxTaskbarMode; Res ($v -eq 0 -and $null -ne $v) $v
 } { Set-Dword 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Search' SearchboxTaskbarMode 0 } -Hkcu
 
+# ---------------------------------------------------------- gaming [28]-[29]
+# Added 2026-10-10 for Fortnite. Both are per-user (HKCU) settings.
+
+# [28] Fortnite runs on the Arc A370M (high-performance GPU), not the Iris Xe.
+#      WHY: with no per-app preference Windows may run the game on the iGPU --
+#           far fewer FPS. Same as Settings > Display > Graphics > Fortnite >
+#           "High performance". GpuPreference: 0=let Windows, 1=power saving,
+#           2=high performance. Skipped if Fortnite isn't installed.
+#      NOTE: Epic sometimes moves the game folder on big updates -- if this
+#            shows SKIPPED/DRIFTED after one, just re-apply.
+$FortniteExe = 'C:\Program Files\Epic Games\Fortnite\FortniteGame\Binaries\Win64\FortniteClient-Win64-Shipping.exe'
+$GpuPrefKey  = 'HKCU:\Software\Microsoft\DirectX\UserGpuPreferences'
+Add-Item 28 gaming 'Fortnite on high-performance GPU (Arc) (HKCU)' {
+    if (-not (Test-Path $FortniteExe)) { return SkipRes 'Fortnite not found at the default path' }
+    $v = RegVal $GpuPrefKey $FortniteExe
+    Res ($v -match 'GpuPreference=2;') $(if ($v) { $v } else { 'not set (Windows decides)' })
+} {
+    Ensure-Key $GpuPrefKey
+    Set-ItemProperty $GpuPrefKey -Name $FortniteExe -Value 'GpuPreference=2;' -Type String
+} -Hkcu
+
+# [29] Game Mode on (HKCU). WHY: Windows prioritises the game's threads and
+#      holds back Windows Update installs / notifications while it runs.
+Add-Item 29 gaming 'Game Mode on (HKCU)' {
+    $v = RegVal 'HKCU:\Software\Microsoft\GameBar' AutoGameModeEnabled; Res ($v -eq 1) $v
+} { Set-Dword 'HKCU:\Software\Microsoft\GameBar' AutoGameModeEnabled 1 } -Hkcu
+
 # =============================================================================
 #  [19] GPU driver pin vs Windows Update  (separate action -- not part of Apply)
 # =============================================================================
@@ -684,6 +711,7 @@ function Show-Menu {
         Write-Host '  4  Apply baseline          NTFS, visual FX, services'
         Write-Host '  5  Apply advanced          [10]-[18]'
         Write-Host '  6  Apply idle-RAM debloat  [20]-[27]'
+        Write-Host '  G  Apply gaming            [28]-[29]  (Fortnite GPU, Game Mode)'
         Write-Host '  7  Apply specific items    (enter IDs, e.g. 15,23)'
         Write-Host '  8  GPU driver pin          [19]'
         Write-Host '  9  List all items'
@@ -696,6 +724,7 @@ function Show-Menu {
             '4' { Invoke-Apply (Select-Items 'baseline') }
             '5' { Invoke-Apply (Select-Items 'advanced') }
             '6' { Invoke-Apply (Select-Items 'debloat') }
+            'G' { Invoke-Apply (Select-Items 'gaming') }
             '7' {
                 $sel = Select-Items $null "$(Read-Host 'Item IDs (comma-separated)')"
                 if ($sel.Count) { Invoke-Apply $sel } else { Write-Host 'No matching items.' -ForegroundColor Yellow }

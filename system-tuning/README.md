@@ -21,6 +21,7 @@ performance and debloat tweaks for an MSI Thin GF63 12HW
   - [Advanced `[10]`–`[18]`](#advanced-1018)
   - [GPU driver pin `[19]`](#gpu-driver-pin-19)
   - [Idle-RAM debloat `[20]`–`[27]`](#idle-ram-debloat-2027)
+  - [Gaming `[28]`–`[29]`](#gaming-2829)
 - [Deliberately left alone](#deliberately-left-alone)
 - [Known gotchas](#known-gotchas)
 - [When to re-run](#when-to-re-run)
@@ -78,6 +79,7 @@ If you see *"running scripts is disabled on this system"*, keep the
   4  Apply baseline          NTFS, visual FX, services
   5  Apply advanced          [10]-[18]
   6  Apply idle-RAM debloat  [20]-[27]
+  G  Apply gaming            [28]-[29]  (Fortnite GPU, Game Mode)
   7  Apply specific items    (enter IDs, e.g. 15,23)
   8  GPU driver pin          [19]
   9  List all items
@@ -103,7 +105,7 @@ Output legend:
 .\tune.ps1 verify                        # check everything
 .\tune.ps1 verify -Group debloat         # one group
 .\tune.ps1 apply                         # fix everything that drifted
-.\tune.ps1 apply -Group core,advanced    # groups: core, baseline, advanced, debloat
+.\tune.ps1 apply -Group core,advanced    # groups: core, baseline, advanced, debloat, gaming
 .\tune.ps1 apply -Item 15,23             # specific item IDs
 .\tune.ps1 apply -WhatIf                 # dry run: shows what it would fix, changes nothing
 .\tune.ps1 apply -SkipWiFiRestart        # don't restart the Wi-Fi adapter at the end
@@ -188,6 +190,36 @@ memory use and fewer background wakeups.
 | 25 | Game DVR background capture off (policy) | |
 | 26 | Taskbar search box hidden *(per user)* | SearchHost was using about 430 MB. Search from Start still works. |
 | 27 | **Nahimic audio kept ON** (exception) | Nahimic's sound effects are what make this laptop's speakers sound good. Its service and session tasks are kept on, so no debloat run can switch them off. |
+
+### Gaming `[28]`–`[29]`
+
+Added for Fortnite. Both are per-user settings.
+
+| # | Setting | Notes |
+|---|---|---|
+| 28 | **Fortnite runs on the Arc A370M** | Without this, Windows may run the game on the much slower Iris Xe. Same as Settings → Display → Graphics → Fortnite → *High performance*. Re-apply if Epic moves the game folder. |
+| 29 | Game Mode on | Already on; now enforced. |
+
+Already helping: Game DVR off `[25]`, memory compression `[15]`, CPU at 100%
+on AC `[2]`, and the AC-only latency tweaks `[12]`/`[13]`. Easy Anti-Cheat is
+not affected by anything here.
+
+**Before a session:**
+- Plug in the charger, and pick a performance/fan mode in MSI Center.
+- Close heavy apps (the Claude desktop app alone uses about 2.3 GB). If you
+  used WSL, run `wsl --shutdown`, because it can hold up to 12 GB.
+- Use Ethernet if you can (`[17]` already tuned it). Otherwise join the
+  router's **5 GHz** network by name. On a weak Wi-Fi link, ping matters more
+  than speed.
+
+**Controller:** baseline 4.5 disables `GameInputSvc` and `XboxGipSvc`. Keyboard
+and mouse are unaffected. If an Xbox or USB controller misbehaves, run
+`Set-Service GameInputSvc,XboxGipSvc -StartupType Manual` and remove both from
+the 4.5 list in `tune.ps1`.
+
+**GPU driver:** the Arc driver is pinned against Windows Update `[19]`, so
+update it yourself from intel.com. New Arc drivers often improve Fortnite
+performance. The steps: `-Gpu Lift`, install and reboot, then `-Gpu PerDevice`.
 
 ---
 

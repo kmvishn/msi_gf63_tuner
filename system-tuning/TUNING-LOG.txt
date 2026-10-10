@@ -879,5 +879,47 @@
  Power plan -- Balanced stays; High Performance = heat + battery for nothing.
 
 ===============================================================================
+ SECTION 9 -- GAMING (Fortnite)                   added 2026-10-10
+===============================================================================
+ Script      : tune.ps1 apply -Group gaming  (items [28]-[29], per-user/HKCU)
+
+-------------------------------------------------------------------------------
+ [28] FORTNITE -> HIGH-PERFORMANCE GPU (Arc A370M)          APPLIED 2026-10-10
+-------------------------------------------------------------------------------
+ PROBLEM  No per-app GPU preference -> Windows may run the game on the Iris Xe
+          iGPU (far fewer FPS).
+ AFTER    HKCU\Software\Microsoft\DirectX\UserGpuPreferences
+            <Fortnite>\...\Win64\FortniteClient-Win64-Shipping.exe = "GpuPreference=2;"
+          (= Settings > Display > Graphics > Fortnite > High performance)
+ NOTE     Path is the default Epic install. If Epic moves it, re-apply.
+ REVERT   Remove-ItemProperty HKCU:\Software\Microsoft\DirectX\UserGpuPreferences -Name '<exe path>'
+
+-------------------------------------------------------------------------------
+ [29] GAME MODE -> ON                                       ALREADY ON
+-------------------------------------------------------------------------------
+ HKCU\Software\Microsoft\GameBar  AutoGameModeEnabled = 1  (now enforced)
+
+-------------------------------------------------------------------------------
+ GAMING NOTES  (checked 2026-10-10, not scripted)
+-------------------------------------------------------------------------------
+ HELPS ALREADY  [25] Game DVR off, [29] Game Mode, [15] compression, [2] CPU
+                100% on AC, [12]/[13] AC latency, display at 144 Hz.
+ ANTI-CHEAT     EasyAntiCheat_EOS present (Manual -- starts with the game).
+                Nothing in the tuning touches it.
+ CONTROLLER     Baseline 4.5 disables GameInputSvc + XboxGipSvc. Keyboard/mouse
+                unaffected. IF an Xbox/USB controller misbehaves, re-enable:
+                  Set-Service GameInputSvc,XboxGipSvc -StartupType Manual
+                (and remove them from the 4.5 list in tune.ps1).
+ GPU DRIVER     Arc is pinned against WU ([19]) -- keep it current MANUALLY
+                from intel.com (new Arc drivers often fix Fortnite perf):
+                -Gpu Lift -> install + reboot -> -Gpu PerDevice.
+ BEFORE PLAYING close the Claude desktop app (~2.3 GB) and run
+                'wsl --shutdown' if WSL was used (it can hold up to 12 GB).
+ NETWORK        Wi-Fi link was 26-43 Mbps (weak). Ping/stability matter more
+                than speed: Ethernet best ([17] already tuned it), else join
+                the router's 5 GHz SSID by name.
+ POWER          Plugged in, MSI Center performance/fan mode; Balanced plan OK.
+
+===============================================================================
  END OF LOG
 ===============================================================================
