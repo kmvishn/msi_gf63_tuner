@@ -264,6 +264,7 @@ Add-Item 4.3 baseline 'Wireless adapter power AC = Max Performance' {
 } { Set-AcValue 19cbb8fa-5279-450e-9fac-8a3d5fedd0c1 12bbebe6-58d6-4636-95bb-3217ef867c1a 0 }
 
 # SysMain is deliberately NOT here -- it hosts Memory Compression, see [15].
+# NahimicService is deliberately NOT here -- kept ON for audio, see [27].
 # [4.5] Services disabled by the original debloat, kept enforced.
 #       Each one is unused on this machine (Xbox, printing, fax-era sharing,
 #       telemetry, phone-link, vendor updaters...). The full per-service reason
@@ -275,7 +276,7 @@ Add-Item 4.3 baseline 'Wireless adapter power AC = Max Performance' {
 $BaselineServices = @(
     'CDPSvc', 'DiagTrack', 'dmwappushservice', 'dptftcs', 'DSAService',
     'DSAUpdateService', 'GameInputSvc', 'IntelGFXFWupdateTool', 'InventorySvc',
-    'lfsvc', 'lmhosts', 'MSI Sendevsvc', 'NahimicService', 'NetTcpPortSharing',
+    'lfsvc', 'lmhosts', 'MSI Sendevsvc', 'NetTcpPortSharing',
     'O+Connect Service', 'OplusRemoteService', 'PcaSvc', 'QWAVE', 'RemoteAccess',
     'RemoteRegistry', 'shpamsvc', 'Spooler', 'SSDPSRV', 'ssh-agent', 'StiSvc',
     'TrkWks', 'tzautoupdate', 'WbioSrvc', 'wercplsupport', 'WerSvc',
@@ -406,7 +407,7 @@ Add-Item 18 advanced 'WSL2 autoMemoryReclaim=gradual + sparseVhd=true' {
     Res ($a -and $b) "autoMemoryReclaim=$a sparseVhd=$b"
 } $null 'add both lines under [wsl2] in %USERPROFILE%\.wslconfig, then: wsl --shutdown'
 
-# ------------------------------------------- idle-RAM debloat [20]-[26] (S8)
+# ------------------------------------------- idle-RAM debloat [20]-[27] (S8)
 # ---- Section 8: idle-RAM / background debloat (2026-10-10) ----------------
 # Found during an idle-RAM audit. Each is small; together ~100-300 MB plus
 # fewer background wakeups.
@@ -427,8 +428,9 @@ Add-Item 21 debloat 'SharedAccess (ICS) Manual  (Running is fine)' {
 } { Set-Service SharedAccess -StartupType Manual }
 
 # [22] Leftover scheduled tasks whose feature is already disabled in 4.5
-#      (Maps, Xbox, Error Reporting, PCA, Nahimic) or unused (Family Safety).
+#      (Maps, Xbox, Error Reporting, PCA) or unused (Family Safety).
 #      With the service gone they just wake up and do nothing.
+#      (Nahimic tasks were here briefly -- removed, see [27].)
 $LeftoverTasks = @(
     '\Microsoft\Windows\Maps\MapsToastTask',
     '\Microsoft\Windows\Maps\MapsUpdateTask',
@@ -436,10 +438,30 @@ $LeftoverTasks = @(
     '\Microsoft\Windows\Windows Error Reporting\QueueReporting',
     '\Microsoft\Windows\Application Experience\PcaPatchDbTask',
     '\Microsoft\Windows\Shell\FamilySafetyMonitor',
-    '\Microsoft\Windows\Shell\FamilySafetyRefreshTask',
-    '\NahimicTask32',
-    '\NahimicTask64')
-Add-Item 22 debloat 'Leftover scheduled tasks off (Maps/Xbox/WER/PCA/FamilySafety/Nahimic)' { TestTasks $LeftoverTasks } { FixTasks $LeftoverTasks }
+    '\Microsoft\Windows\Shell\FamilySafetyRefreshTask')
+Add-Item 22 debloat 'Leftover scheduled tasks off (Maps/Xbox/WER/PCA/FamilySafety)' { TestTasks $LeftoverTasks } { FixTasks $LeftoverTasks }
+
+# [27] Nahimic audio KEPT ON -- an explicit exception to the debloat.
+#      WHY: Nahimic (MSI/A-Volute audio effects) is what makes this laptop's
+#           speakers sound good. The original debloat disabled NahimicService
+#           (baseline 4.5) and [22] briefly disabled its tasks; without them
+#           the Nahimic app has no effect. Enforced ON so no future 'apply'
+#           or debloat list can silently kill it again.
+#      NOTE: NahimicTask32/64 launch NahimicSvc32/64.exe -- the per-session
+#            half of Nahimic; the service is the system half. Both are needed.
+$NahimicTasks = @('\NahimicTask32', '\NahimicTask64')
+Add-Item 27 debloat 'Nahimic audio ON (service + tasks) -- exception' {
+    $s = Get-Service NahimicService -EA 0
+    if (-not $s) { return SkipRes 'Nahimic not installed' }
+    $off = @(TaskObjs $NahimicTasks | Where-Object State -eq 'Disabled')
+    Res ($s.StartType -eq 'Automatic' -and $s.Status -eq 'Running' -and $off.Count -eq 0) `
+        "service=$($s.StartType)/$($s.Status) disabledTasks=$((($off | ForEach-Object TaskName) -join ','))"
+} {
+    Set-Service NahimicService -StartupType Automatic
+    Start-Service NahimicService
+    TaskObjs $NahimicTasks | Where-Object State -eq 'Disabled' | Enable-ScheduledTask | Out-Null
+    Write-Host '           NOTE: sign out and back in (or reboot) so the Nahimic session task starts' -ForegroundColor Yellow
+}
 
 # [23] Edge Startup Boost + background mode off (machine policy).
 #      WHY: Edge preloaded at every login and kept processes alive after close.
@@ -661,7 +683,7 @@ function Show-Menu {
         Write-Host '  3  Apply core fixes        [1]-[9]'
         Write-Host '  4  Apply baseline          NTFS, visual FX, services'
         Write-Host '  5  Apply advanced          [10]-[18]'
-        Write-Host '  6  Apply idle-RAM debloat  [20]-[26]'
+        Write-Host '  6  Apply idle-RAM debloat  [20]-[27]'
         Write-Host '  7  Apply specific items    (enter IDs, e.g. 15,23)'
         Write-Host '  8  GPU driver pin          [19]'
         Write-Host '  9  List all items'

@@ -438,7 +438,7 @@
    DSAUpdateService         Intel DSA Updater                 ** see 4.6 (b) **
    IntelGFXFWupdateTool     Intel Graphics Firmware Update
    WMIRegistrationService   Intel ME WMI Provider Registration
-   NahimicService           Nahimic audio effects (MSI)
+   (NahimicService          REMOVED 2026-10-10 -- kept ON for audio, see [27])
    MSI Sendevsvc            MSI Sensor dev service            ** see 4.6 (c) **
    StiSvc                   Windows Image Acquisition (scanners)
    WbioSrvc                 Windows Biometric (fingerprint / Hello)
@@ -465,7 +465,7 @@
  REAPPLY ALL (elevated) -- only if a reset undid them
    $svc = @('CDPSvc','DiagTrack','dmwappushservice','dptftcs','DSAService',
      'DSAUpdateService','GameInputSvc','IntelGFXFWupdateTool','InventorySvc',
-     'lfsvc','lmhosts','MSI Sendevsvc','NahimicService','NetTcpPortSharing',
+     'lfsvc','lmhosts','MSI Sendevsvc','NetTcpPortSharing',
      'O+Connect Service','OplusRemoteService','PcaSvc','QWAVE','RemoteAccess',
      'RemoteRegistry','shpamsvc','Spooler','SSDPSRV','ssh-agent','StiSvc',
      'TrkWks','tzautoupdate','WbioSrvc','wercplsupport','WerSvc',
@@ -805,8 +805,8 @@
    \Microsoft\Windows\Windows Error Reporting\QueueReporting   (WerSvc, 4.5)
    \Microsoft\Windows\Application Experience\PcaPatchDbTask    (PcaSvc, 4.5)
    \Microsoft\Windows\Shell\FamilySafetyMonitor, ...RefreshTask (no parental ctl)
-   \NahimicTask32, \NahimicTask64                              (NahimicService, 4.5)
- VERIFY   all 9 report State = Disabled
+   (\NahimicTask32/64 were listed here -- REVERSED same day, see [27])
+ VERIFY   all 7 report State = Disabled
  REVERT   Enable-ScheduledTask -TaskPath <path> -TaskName <name>
 
 -------------------------------------------------------------------------------
@@ -847,6 +847,22 @@
  AFTER    HKCU\Software\Microsoft\Windows\CurrentVersion\Search
             SearchboxTaskbarMode = 0
  REAPPLY  (normal user) Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Search' -Name SearchboxTaskbarMode -Value 0 -Type DWord
+
+-------------------------------------------------------------------------------
+ [27] NAHIMIC AUDIO -> KEPT ON  (explicit exception)    ADDED 2026-10-10
+-------------------------------------------------------------------------------
+ WHY      Nahimic (MSI / A-Volute audio effects, app 1.10.15) is what makes
+          this laptop's speakers sound good. Without its service + session
+          tasks the Nahimic app does nothing.
+ HISTORY  NahimicService was disabled by the ORIGINAL debloat (baseline 4.5);
+          [22] then also disabled NahimicTask32/64 on 2026-10-10. Both
+          reversed the same day at the user's request.
+ NOW      NahimicService removed from the 4.5 disable list; Nahimic tasks
+          removed from [22]; tune.ps1 [27] ENFORCES them ON:
+            NahimicService       Automatic + Running
+            \NahimicTask32/64    Enabled  (launch NahimicSvc32/64.exe per session)
+ APPLY    (elevated)  .\tune.ps1 apply -Item 27   then sign out/in or reboot
+ REVERT   don't -- or remove item [27] from tune.ps1 first
 
 -------------------------------------------------------------------------------
  NOT APPLIED / LEFT ALONE  (recorded so they aren't re-investigated)

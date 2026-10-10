@@ -20,7 +20,7 @@ performance and debloat tweaks for an MSI Thin GF63 12HW
   - [Baseline `[4.x]`](#baseline-4x)
   - [Advanced `[10]`–`[18]`](#advanced-1018)
   - [GPU driver pin `[19]`](#gpu-driver-pin-19)
-  - [Idle-RAM debloat `[20]`–`[26]`](#idle-ram-debloat-2026)
+  - [Idle-RAM debloat `[20]`–`[27]`](#idle-ram-debloat-2027)
 - [Deliberately left alone](#deliberately-left-alone)
 - [Known gotchas](#known-gotchas)
 - [When to re-run](#when-to-re-run)
@@ -77,7 +77,7 @@ If you see *"running scripts is disabled on this system"*, keep the
   3  Apply core fixes        [1]-[9]
   4  Apply baseline          NTFS, visual FX, services
   5  Apply advanced          [10]-[18]
-  6  Apply idle-RAM debloat  [20]-[26]
+  6  Apply idle-RAM debloat  [20]-[27]
   7  Apply specific items    (enter IDs, e.g. 15,23)
   8  GPU driver pin          [19]
   9  List all items
@@ -173,7 +173,7 @@ Arc A370M (`DEV_5693`).
 Order matters: **install the driver you want and reboot first, then pin it.**
 To update later: `-Gpu Lift`, then install and reboot, then `-Gpu PerDevice`.
 
-### Idle-RAM debloat `[20]`–`[26]`
+### Idle-RAM debloat `[20]`–`[27]`
 
 Small trims found during an idle-RAM audit. Expect roughly 100–300 MB less
 memory use and fewer background wakeups.
@@ -182,11 +182,12 @@ memory use and fewer background wakeups.
 |---|---|---|
 | 20 | `MapsBroker` disabled | Offline-maps updater. |
 | 21 | `SharedAccess` (ICS) → **Manual** | Not Disabled: WSL / Hyper-V NAT starts it on demand, so seeing it *Running* is expected. |
-| 22 | Leftover scheduled tasks off | Maps, Xbox, Error Reporting, PCA, Family Safety, Nahimic. Their services are already off. |
+| 22 | Leftover scheduled tasks off | Maps, Xbox, Error Reporting, PCA, Family Safety. Their services are already off. |
 | 23 | Edge Startup Boost + background mode off (policy) | Edge will show "managed by your organization". That's harmless. |
 | 24 | Delivery Optimization P2P off | HTTP-only downloads. The service itself stays. |
 | 25 | Game DVR background capture off (policy) | |
 | 26 | Taskbar search box hidden *(per user)* | SearchHost was using about 430 MB. Search from Start still works. |
+| 27 | **Nahimic audio kept ON** (exception) | Nahimic's sound effects are what make this laptop's speakers sound good. Its service and session tasks are kept on, so no debloat run can switch them off. |
 
 ---
 
@@ -199,6 +200,8 @@ These came up and were rejected on purpose, so they don't get re-investigated:
   visuals, notifications or updates.
 - **MSI Center / MSI Foundation Service.** They provide fan control, which
   matters on a thin chassis.
+- **Nahimic.** Its audio effects make the speakers sound good. `[27]` keeps it
+  switched on.
 - **Packaged (Microsoft Store) app services.** Their startup type can't be
   changed, even by an admin. They can only be stopped.
 - **The High Performance power plan.** On a laptop, Balanced already boosts
