@@ -235,3 +235,4 @@ adb shell settings put global private_dns_mode off
 ```bash
 adb shell setprop persist.traced.enable 1
 ```
+

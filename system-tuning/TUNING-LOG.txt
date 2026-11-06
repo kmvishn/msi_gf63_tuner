@@ -608,7 +608,7 @@
    LONGEVITY   : [11] Last-Access off, [18] sparseVhd (fewer SSD writes)
    EFFICIENCY  : [15] Memory Compression, [16] telemetry tasks off,
                  [18] autoMemoryReclaim (RAM handed back to Windows)
-   PERFORMANCE : [10] Wi-Fi 5 GHz, [12] ASPM off, [13] DiskIdle off,
+   PERFORMANCE : [10] Wi-Fi band (5 GHz, reversed 10-18), [12] ASPM off, [13] DiskIdle off,
                  [14] Wi-Fi latency savers off
 
 -------------------------------------------------------------------------------
@@ -626,6 +626,12 @@
  REAPPLY  Set-NetAdapterAdvancedProperty -Name WiFi -DisplayName 'Preferred Band' -DisplayValue '3. Prefer 5GHz band'
  VERIFY   (Get-NetAdapterAdvancedProperty -Name WiFi -RegistryKeyword RoamingPreferredBandType).DisplayValue
  REVERT   ...-DisplayValue '1. No Preference'
+
+ *** REVERSED 2026-10-18 -> '1. No Preference' (tune.ps1 [10] now enforces it) ***
+   The room is at the far end of the building from the router. On a weak
+   signal the card clung to 5 GHz and dropped to "No internet" while the
+   phone fell back to 2.4 GHz and stayed online. 2.4 GHz range matters more
+   here than 5 GHz throughput.
 
 -------------------------------------------------------------------------------
  [11] NTFS LAST-ACCESS TIME -> disabled           (addresses Section 3f)

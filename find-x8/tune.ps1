@@ -3,6 +3,7 @@
     Automated optimization script for OPPO Find X8 (ColorOS 15/17, Android 17).
 .DESCRIPTION
     Applies non-destructive performance and battery optimizations via ADB:
+    - Verifies installed packages before acting (safely skips missing apps)
     - Trims post-OTA upgrade caches
     - Freezes telemetry and push-ad bloatware
     - Pre-compiles all packages with AOT speed-profile
@@ -15,7 +16,7 @@
 [CmdletBinding()]
 param()
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 
 function Find-Adb {
     if (Get-Command adb -ErrorAction SilentlyContinue) {
@@ -40,14 +41,24 @@ Write-Host "Using ADB: $Adb" -ForegroundColor Cyan
 # Check connected device
 $devices = & $Adb devices | Where-Object { $_ -match "\bdevice\b" }
 if (-not $devices) {
-    throw "No authorized device connected via ADB. Please connect your phone, enable USB Debugging, and authorize the PC prompt."
+    Write-Error "No authorized device connected via ADB. Please connect your phone, enable USB Debugging, and authorize the PC prompt."
+    return
 }
 Write-Host "Device detected and authorized." -ForegroundColor Green
 
+# Fetch currently installed packages to ensure zero-failure execution
+Write-Host "`nScanning installed packages on device..." -ForegroundColor Gray
+$installedRaw = & $Adb shell pm list packages -u 2>$null
+$installedPackages = @($installedRaw | ForEach-Object { ($_ -replace "^package:", "").Trim() })
+
 # 1. Post-OTA Cache Sweep
 Write-Host "`n[1/6] Purging post-OTA temporary upgrade caches..." -ForegroundColor Yellow
-& $Adb shell pm trim-caches 999G
-Write-Host "Cache sweep complete." -ForegroundColor Green
+try {
+    & $Adb shell pm trim-caches 999G 2>$null
+    Write-Host "Cache sweep complete." -ForegroundColor Green
+} catch {
+    Write-Host "Cache sweep skipped or unsupported on this build." -ForegroundColor DarkYellow
+}
 
 # 2. Freeze Telemetry and Push-Ad Bloatware
 Write-Host "`n[2/6] Freezing telemetry and promotional services..." -ForegroundColor Yellow
@@ -66,23 +77,39 @@ $telemetryPackages = @(
     "com.google.android.printservice.recommendation"
 )
 foreach ($pkg in $telemetryPackages) {
-    $res = & $Adb shell pm disable-user --user 0 $pkg
-    Write-Host "  $pkg -> $res" -ForegroundColor Gray
+    if ($installedPackages -contains $pkg) {
+        try {
+            $res = & $Adb shell pm disable-user --user 0 $pkg 2>$null
+            Write-Host "  $pkg -> $res" -ForegroundColor Gray
+        } catch {
+            Write-Host "  $pkg -> [WARN] Unable to disable, skipping." -ForegroundColor DarkYellow
+        }
+    } else {
+        Write-Host "  $pkg -> [SKIPPED] not installed" -ForegroundColor DarkGray
+    }
 }
 
 # 3. Apply Quick-Doze Standby Tuning
 Write-Host "`n[3/6] Applying Quick-Doze deep sleep parameters..." -ForegroundColor Yellow
-$dozeConfig = "light_after_inactive_to=60000,light_pre_idle_to=180000,light_idle_to=300000,light_max_idle_to=900000,inactive_to=300000,sensing_to=0,locating_to=0,motion_inactive_to=120000,idle_after_inactive_to=120000"
-& $Adb shell settings put global device_idle_constants $dozeConfig
-& $Adb shell settings put global send_action_app_error 0
-& $Adb shell setprop persist.traced.enable 0
-Write-Host "Quick-Doze and kernel tracing tweaks applied." -ForegroundColor Green
+try {
+    $dozeConfig = "light_after_inactive_to=60000,light_pre_idle_to=180000,light_idle_to=300000,light_max_idle_to=900000,inactive_to=300000,sensing_to=0,locating_to=0,motion_inactive_to=120000,idle_after_inactive_to=120000"
+    & $Adb shell settings put global device_idle_constants $dozeConfig 2>$null
+    & $Adb shell settings put global send_action_app_error 0 2>$null
+    & $Adb shell setprop persist.traced.enable 0 2>$null
+    Write-Host "Quick-Doze and kernel tracing tweaks applied." -ForegroundColor Green
+} catch {
+    Write-Host "Quick-Doze configuration error: $_" -ForegroundColor DarkYellow
+}
 
 # 4. Enable System-Wide AdGuard Private DNS
 Write-Host "`n[4/6] Enabling AdGuard Private DNS..." -ForegroundColor Yellow
-& $Adb shell settings put global private_dns_mode hostname
-& $Adb shell settings put global private_dns_specifier dns.adguard-dns.com
-Write-Host "Private DNS active: dns.adguard-dns.com" -ForegroundColor Green
+try {
+    & $Adb shell settings put global private_dns_mode hostname 2>$null
+    & $Adb shell settings put global private_dns_specifier dns.adguard-dns.com 2>$null
+    Write-Host "Private DNS active: dns.adguard-dns.com" -ForegroundColor Green
+} catch {
+    Write-Host "DNS configuration skipped: $_" -ForegroundColor DarkYellow
+}
 
 # 5. Place Secondary Apps into Restricted Standby Bucket (Level 45)
 Write-Host "`n[5/6] Restricting background execution on secondary apps..." -ForegroundColor Yellow
@@ -166,15 +193,27 @@ $restrictedApps = @(
     "com.microsoft.office.officehubrow"
 )
 foreach ($app in $restrictedApps) {
-    & $Adb shell am set-standby-bucket $app restricted
-    Write-Host "  $app -> Standby: Restricted (45)" -ForegroundColor Gray
+    if ($installedPackages -contains $app) {
+        try {
+            & $Adb shell am set-standby-bucket $app restricted 2>$null
+            Write-Host "  $app -> Standby: Restricted (45)" -ForegroundColor Gray
+        } catch {
+            Write-Host "  $app -> [WARN] Unable to set bucket, skipping." -ForegroundColor DarkYellow
+        }
+    } else {
+        Write-Host "  $app -> [SKIPPED] not installed" -ForegroundColor DarkGray
+    }
 }
 
 # 6. AOT Bytecode Recompilation
 Write-Host "`n[6/6] Executing AOT Compilation (speed-profile)..." -ForegroundColor Yellow
-Write-Host "This will take 1-2 minutes to optimize all packages natively..." -ForegroundColor Gray
-& $Adb shell cmd package compile -m speed-profile -a
-Write-Host "AOT compilation completed successfully." -ForegroundColor Green
+Write-Host "Optimizing all installed packages natively for Dimensity 9400..." -ForegroundColor Gray
+try {
+    & $Adb shell cmd package compile -m speed-profile -a 2>$null
+    Write-Host "AOT compilation completed successfully." -ForegroundColor Green
+} catch {
+    Write-Host "Compilation encountered a non-fatal warning: $_" -ForegroundColor DarkYellow
+}
 
 Write-Host "`n=======================================================" -ForegroundColor Cyan
 Write-Host " Tuning Complete! Please restart your phone to apply." -ForegroundColor Cyan

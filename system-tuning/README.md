@@ -149,7 +149,7 @@ Tuning that predates this project, kept enforced:
 
 | # | Setting | Why |
 |---|---|---|
-| 10 | Wi-Fi: prefer 5 GHz | About 3–4× the throughput of 2.4 GHz. "Prefer", not "force", so 2.4 GHz still works as a fallback. |
+| 10 | Wi-Fi: preferred band = no preference | Was "prefer 5 GHz" until 2026-10-18. Reversed because the room is far from the router: on a weak signal the card clung to 5 GHz and lost internet, while 2.4 GHz reaches further. |
 | 11 | NTFS last-access timestamps off | Every file read was causing a write. Less wear on the DRAM-less SSD. |
 | 12 | PCIe ASPM off, **AC only** | Lower wake latency for the NVMe drive. |
 | 13 | Disk idle timeout never, **AC only** | A spin-down timer only adds stalls on NVMe. |
@@ -209,8 +209,8 @@ not affected by anything here.
 - Close heavy apps (the Claude desktop app alone uses about 2.3 GB). If you
   used WSL, run `wsl --shutdown`, because it can hold up to 12 GB.
 - Use Ethernet if you can (`[17]` already tuned it). Otherwise join the
-  router's **5 GHz** network by name. On a weak Wi-Fi link, ping matters more
-  than speed.
+  router's **2.4 GHz** network if you're far from the router (it reaches
+  further than 5 GHz). On a weak Wi-Fi link, steady ping matters more than speed.
 
 **Controller:** baseline 4.5 disables `GameInputSvc` and `XboxGipSvc`. Keyboard
 and mouse are unaffected. If an Xbox or USB controller misbehaves, run

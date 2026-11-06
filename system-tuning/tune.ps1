@@ -311,14 +311,16 @@ Add-Item 4.5 baseline 'Baseline services disabled (absent ones skipped)' {
 }
 
 # ---------------------------------------------------- advanced [10]-[18] (S7)
-# [10] Wi-Fi prefers 5 GHz ("prefer", not "force" -- 2.4 GHz still a fallback).
-#      WHY: was sitting on 2.4 GHz at ~300-400 Mbps; 5 GHz gives ~3-4x.
-#      NOTE: only works if both bands share one SSID name.
-Add-Item 10 advanced 'Wi-Fi Preferred Band = Prefer 5 GHz' {
+# [10] Wi-Fi Preferred Band = No Preference  (REVERSED 2026-10-18).
+#      WAS: Prefer 5 GHz for ~3-4x throughput near the router.
+#      WHY REVERSED: the room is at the far end of the building; on a weak
+#           signal the card clung to 5 GHz and dropped to "No internet" while
+#           the phone fell back to 2.4 GHz and kept working.
+Add-Item 10 advanced 'Wi-Fi Preferred Band = No Preference' {
     $p = Get-NetAdapterAdvancedProperty -Name WiFi -RegistryKeyword RoamingPreferredBandType -EA 0
     if (-not $p) { return SkipRes 'Preferred Band property not found' }
-    Res ($p.DisplayValue -eq '3. Prefer 5GHz band') $p.DisplayValue
-} { Set-NetAdapterAdvancedProperty -Name WiFi -DisplayName 'Preferred Band' -DisplayValue '3. Prefer 5GHz band' -EA Stop } -Wifi
+    Res ($p.DisplayValue -eq '1. No Preference') $p.DisplayValue
+} { Set-NetAdapterAdvancedProperty -Name WiFi -DisplayName 'Preferred Band' -DisplayValue '1. No Preference' -EA Stop } -Wifi
 
 # [11] NTFS last-access timestamps off.
 #      WHY: every file READ caused a metadata WRITE -- needless wear on the

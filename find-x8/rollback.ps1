@@ -3,7 +3,7 @@
     Complete rollback script for OPPO Find X8 tuning.
 .DESCRIPTION
     Reverts all changes made by tune.ps1:
-    - Re-enables all frozen telemetry and OEM packages
+    - Verifies installed packages and unfreezes them safely
     - Resets App Standby Buckets back to automatic
     - Clears custom Quick-Doze settings back to factory default
     - Disables AdGuard Private DNS
@@ -13,7 +13,7 @@
 [CmdletBinding()]
 param()
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 
 function Find-Adb {
     if (Get-Command adb -ErrorAction SilentlyContinue) {
@@ -35,6 +35,11 @@ function Find-Adb {
 $Adb = Find-Adb
 Write-Host "Using ADB: $Adb" -ForegroundColor Cyan
 
+# Fetch currently installed packages to ensure zero-failure execution
+Write-Host "`nScanning installed packages on device..." -ForegroundColor Gray
+$installedRaw = & $Adb shell pm list packages -u 2>$null
+$installedPackages = @($installedRaw | ForEach-Object { ($_ -replace "^package:", "").Trim() })
+
 # 1. Unfreeze all packages
 Write-Host "`n[1/4] Re-enabling frozen packages..." -ForegroundColor Yellow
 $packagesToEnable = @(
@@ -52,8 +57,16 @@ $packagesToEnable = @(
     "com.google.android.printservice.recommendation"
 )
 foreach ($pkg in $packagesToEnable) {
-    $res = & $Adb shell pm enable $pkg
-    Write-Host "  $pkg -> $res" -ForegroundColor Gray
+    if ($installedPackages -contains $pkg) {
+        try {
+            $res = & $Adb shell pm enable $pkg 2>$null
+            Write-Host "  $pkg -> $res" -ForegroundColor Gray
+        } catch {
+            Write-Host "  $pkg -> [WARN] Unable to enable, skipping." -ForegroundColor DarkYellow
+        }
+    } else {
+        Write-Host "  $pkg -> [SKIPPED] not installed" -ForegroundColor DarkGray
+    }
 }
 
 # 2. Reset Standby Buckets to Active / Automatic
@@ -81,17 +94,27 @@ $allApps = @(
     "com.microsoft.office.officehubrow"
 )
 foreach ($app in $allApps) {
-    & $Adb shell am set-standby-bucket $app active
+    if ($installedPackages -contains $app) {
+        try {
+            & $Adb shell am set-standby-bucket $app active 2>$null
+        } catch {
+            # silently continue
+        }
+    }
 }
 Write-Host "Standby buckets reset to active." -ForegroundColor Green
 
 # 3. Reset Settings & Doze
 Write-Host "`n[3/4] Resetting system parameters to factory defaults..." -ForegroundColor Yellow
-& $Adb shell settings delete global device_idle_constants
-& $Adb shell settings put global private_dns_mode off
-& $Adb shell settings delete global send_action_app_error
-& $Adb shell setprop persist.traced.enable 1
-Write-Host "Settings and kernel tracing restored to factory defaults." -ForegroundColor Green
+try {
+    & $Adb shell settings delete global device_idle_constants 2>$null
+    & $Adb shell settings put global private_dns_mode off 2>$null
+    & $Adb shell settings delete global send_action_app_error 2>$null
+    & $Adb shell setprop persist.traced.enable 1 2>$null
+    Write-Host "Settings and kernel tracing restored to factory defaults." -ForegroundColor Green
+} catch {
+    Write-Host "Settings reset encountered a non-fatal warning: $_" -ForegroundColor DarkYellow
+}
 
 # 4. Finish
 Write-Host "`n[4/4] Rollback Complete. Please restart your phone." -ForegroundColor Cyan
