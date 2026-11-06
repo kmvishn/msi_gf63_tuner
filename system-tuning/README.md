@@ -21,7 +21,7 @@ performance and debloat tweaks for an MSI Thin GF63 12HW
   - [Advanced `[10]`–`[18]`, `[34]`, `[35]`, `[38]`](#advanced-1018-34-35-38)
   - [GPU driver pin `[19]`](#gpu-driver-pin-19)
   - [Idle-RAM debloat `[20]`–`[27]`, `[32]`](#idle-ram-debloat-2027-32)
-  - [Gaming `[28]`–`[29]`, `[33]`, `[36]`, `[37]`](#gaming-2829-33-36-37)
+  - [Gaming `[28]`–`[29]`, `[33]`, `[36]`, `[37]`, `[39]`](#gaming-2829-33-36-37-39)
 - [Deliberately left alone](#deliberately-left-alone)
 - [Known gotchas](#known-gotchas)
 - [When to re-run](#when-to-re-run)
@@ -195,7 +195,7 @@ memory use and fewer background wakeups.
 | 27 | **Nahimic audio kept ON** (exception) | Nahimic's sound effects are what make this laptop's speakers sound good. Its service and session tasks are kept on, so no debloat run can switch them off. |
 | 32 | Brave background mode off (policy) | Stops extensions and background worker processes staying in RAM after close. |
 
-### Gaming `[28]`–`[29]`, `[33]`, `[36]`, `[37]`
+### Gaming `[28]`–`[29]`, `[33]`, `[36]`, `[37]`, `[39]`
 
 Added for Fortnite.
 
@@ -207,6 +207,7 @@ Added for Fortnite.
 | 33 | Network throttling off + SystemResponsiveness 0 | Disables Windows NDIS packet throttling (`0xFFFFFFFF`) and dedicates 100% CPU priority to foreground games. |
 | 36 | GameBarPresenceWriter blocked (IFEO) | Stops `GameBarPresenceWriter.exe` from spawning and injecting into games via IFEO redirection, eliminating presence polling stutters. |
 | 37 | TCP immediate ACK & NoDelay (physical adapters) | Disables delayed ACKs and Nagle's buffering algorithm on Wi-Fi and Ethernet for minimal multiplayer packet latency. |
+| 39 | Game Bar startup notifications off | Disables the "Press Win+G to open Game Bar" overlay popup banner when games launch. *(per user)* |
 
 Already helping: Game DVR off `[25]`, memory compression `[15]`, CPU at 100%
 on AC `[2]`, and the AC-only latency tweaks `[12]`/`[13]`. Easy Anti-Cheat is

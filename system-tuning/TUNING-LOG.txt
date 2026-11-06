@@ -1048,6 +1048,15 @@
  AFTER    Set-MpPreference -ScanAvgCPULoadFactor 25 -EnableLowCpuPriority $true
  REVERT   Set-MpPreference -ScanAvgCPULoadFactor 50 -EnableLowCpuPriority $false
 
+-------------------------------------------------------------------------------
+ [39] GAME BAR STARTUP NOTIFICATION TOASTS -> OFF (HKCU)    ADDED 2026-11-06
+-------------------------------------------------------------------------------
+ WHY      Stops the "Press Win+G to open Game Bar" overlay popup banner from
+          appearing across the screen every time a game (Fortnite) launches.
+ AFTER    HKCU\Software\Microsoft\GameBar
+            ShowStartupNotifications = 0
+ REVERT   Remove-ItemProperty 'HKCU:\Software\Microsoft\GameBar' -Name ShowStartupNotifications -EA 0
+
 ===============================================================================
  END OF LOG
 ===============================================================================

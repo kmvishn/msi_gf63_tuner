@@ -656,6 +656,18 @@ Add-Item 37 gaming 'TCP immediate ACK & NoDelay (physical adapters)' {
     }
 } -Wifi
 
+# [39] Game Bar startup notification toasts off (HKCU).
+#      WHY: stops the "Press Win+G to open Game Bar" overlay banner from
+#           popping up across games (Fortnite).
+#      REVERT: Remove-ItemProperty 'HKCU:\Software\Microsoft\GameBar' -Name ShowStartupNotifications -EA 0
+Add-Item 39 gaming 'Game Bar startup notifications off (HKCU)' {
+    $v = RegVal 'HKCU:\Software\Microsoft\GameBar' ShowStartupNotifications
+    Res ($v -eq 0 -and $null -ne $v) $v
+} {
+    Ensure-Key 'HKCU:\Software\Microsoft\GameBar'
+    Set-Dword 'HKCU:\Software\Microsoft\GameBar' ShowStartupNotifications 0
+} -Hkcu
+
 # =============================================================================
 #  [19] GPU driver pin vs Windows Update  (separate action -- not part of Apply)
 # =============================================================================
@@ -846,7 +858,7 @@ function Show-Menu {
         Write-Host '  4  Apply baseline          NTFS, visual FX, services'
         Write-Host '  5  Apply advanced          [10]-[18],[34],[35],[38]'
         Write-Host '  6  Apply idle-RAM debloat  [20]-[27],[32]'
-        Write-Host '  G  Apply gaming            [28],[28b],[29],[33],[36],[37]  (Fortnite, iGPU binding, Latency, Game Mode)'
+        Write-Host '  G  Apply gaming            [28],[28b],[29],[33],[36],[37],[39]  (Fortnite, iGPU binding, Latency, Game Mode)'
         Write-Host '  7  Apply specific items    (enter IDs, e.g. 15,23)'
         Write-Host '  8  GPU driver pin          [19]'
         Write-Host '  9  List all items'
