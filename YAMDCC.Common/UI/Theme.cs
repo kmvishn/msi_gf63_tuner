@@ -186,6 +186,22 @@ public static class Theme
         tip.Draw += DrawToolTip;
     }
 
+    /// <summary>
+    /// Themes a ContextMenuStrip with dark background and red highlights.
+    /// </summary>
+    public static void Apply(ContextMenuStrip cms)
+    {
+        if (cms is null)
+        {
+            return;
+        }
+
+        cms.BackColor = Surface;
+        cms.ForeColor = Text;
+        cms.Renderer = new DarkToolStripRenderer();
+        StyleToolStripItems(cms.Items);
+    }
+
     private static void DrawToolTip(object sender, DrawToolTipEventArgs e)
     {
         using (SolidBrush b = new(Surface))
@@ -227,6 +243,13 @@ public static class Theme
                 ms.ForeColor = Text;
                 ms.Renderer = new DarkToolStripRenderer();
                 StyleToolStripItems(ms.Items);
+                break;
+
+            case ContextMenuStrip cms:
+                cms.BackColor = Surface;
+                cms.ForeColor = Text;
+                cms.Renderer = new DarkToolStripRenderer();
+                StyleToolStripItems(cms.Items);
                 break;
 
             case StatusStrip ss:

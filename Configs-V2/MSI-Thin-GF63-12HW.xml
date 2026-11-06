@@ -53,8 +53,50 @@
 				</Thresholds>
 			</FanProf>
 			<FanProf>
-				<Name>Performance (Sustained 35W)</Name>
-				<Desc>For sustained heavy loads (PL1=35W / PL2=60W). Idle is 38%, aggressive fan ramp from 65°C up to 100% to maximize thermal headroom with High Performance mode.</Desc>
+				<Name>Performance</Name>
+				<Desc>Aggressive cooling curve designed for gaming and heavy workloads. Ramps early to prevent thermal throttling, hitting 100% fan speed at peak temperatures paired with High Performance mode.</Desc>
+				<PerfMode>Performance</PerfMode>
+				<Thresholds>
+					<Threshold>
+						<Tup>0</Tup>
+						<Tdown>0</Tdown>
+						<Speed>40</Speed>
+					</Threshold>
+					<Threshold>
+						<Tup>52</Tup>
+						<Tdown>45</Tdown>
+						<Speed>48</Speed>
+					</Threshold>
+					<Threshold>
+						<Tup>62</Tup>
+						<Tdown>57</Tdown>
+						<Speed>62</Speed>
+					</Threshold>
+					<Threshold>
+						<Tup>70</Tup>
+						<Tdown>65</Tdown>
+						<Speed>75</Speed>
+					</Threshold>
+					<Threshold>
+						<Tup>76</Tup>
+						<Tdown>72</Tdown>
+						<Speed>85</Speed>
+					</Threshold>
+					<Threshold>
+						<Tup>82</Tup>
+						<Tdown>78</Tdown>
+						<Speed>95</Speed>
+					</Threshold>
+					<Threshold>
+						<Tup>87</Tup>
+						<Tdown>83</Tdown>
+						<Speed>100</Speed>
+					</Threshold>
+				</Thresholds>
+			</FanProf>
+			<FanProf>
+				<Name>Sustained 35W (Custom)</Name>
+				<Desc>Custom profile tuned for sustained 35W CPU power limit (PL1=35W / PL2=60W). Idle is 38%, aggressive fan ramp from 65°C up to 100% at 90°C with High Performance mode.</Desc>
 				<PerfMode>Performance</PerfMode>
 				<Thresholds>
 					<Threshold>
@@ -226,8 +268,50 @@
 				</Thresholds>
 			</FanProf>
 			<FanProf>
-				<Name>Performance (Sustained 35W)</Name>
-				<Desc>Matches the CPU Performance profile.</Desc>
+				<Name>Performance</Name>
+				<Desc>Aggressive cooling curve for the GPU during gaming workloads. Ramps up early to prevent GPU throttle.</Desc>
+				<PerfMode>Performance</PerfMode>
+				<Thresholds>
+					<Threshold>
+						<Tup>0</Tup>
+						<Tdown>0</Tdown>
+						<Speed>40</Speed>
+					</Threshold>
+					<Threshold>
+						<Tup>52</Tup>
+						<Tdown>45</Tdown>
+						<Speed>48</Speed>
+					</Threshold>
+					<Threshold>
+						<Tup>60</Tup>
+						<Tdown>55</Tdown>
+						<Speed>62</Speed>
+					</Threshold>
+					<Threshold>
+						<Tup>66</Tup>
+						<Tdown>62</Tdown>
+						<Speed>75</Speed>
+					</Threshold>
+					<Threshold>
+						<Tup>72</Tup>
+						<Tdown>68</Tdown>
+						<Speed>85</Speed>
+					</Threshold>
+					<Threshold>
+						<Tup>78</Tup>
+						<Tdown>74</Tdown>
+						<Speed>95</Speed>
+					</Threshold>
+					<Threshold>
+						<Tup>84</Tup>
+						<Tdown>80</Tdown>
+						<Speed>100</Speed>
+					</Threshold>
+				</Thresholds>
+			</FanProf>
+			<FanProf>
+				<Name>Sustained 35W (Custom)</Name>
+				<Desc>Matches the CPU Sustained 35W profile.</Desc>
 				<PerfMode>Performance</PerfMode>
 				<Thresholds>
 					<Threshold>

@@ -1,0 +1,21 @@
+<Project>
+    <Target Name="ILRepacker" AfterTargets="Build" Condition="$(Configuration.Contains('Release'))">
+        <Message Importance="high" Text="ILRepacker starting: OutputPath=$(OutputPath), TargetDir=$(TargetDir), TargetPath=$(TargetPath)" />
+        <ItemGroup>
+            <InputAssemblies Include="$(TargetDir)$(TargetName)$(TargetExt)"/>
+            <InputAssemblies Include="$(TargetDir)*.dll" Exclude="$(TargetDir)$(TargetName)$(TargetExt)"/>
+        </ItemGroup>
+        <Message Importance="high" Text="InputAssemblies: @(InputAssemblies)" />
+
+        <ILRepack
+                Parallel="true"
+                DebugInfo="false"
+                AllowDuplicateResources="true"
+                Union="true"
+                InputAssemblies="@(InputAssemblies)"
+                TargetKind="WinExe"
+                KeyFile="$(KeyFile)"
+                OutputFile="$(TargetDir)$(TargetName)$(TargetExt)"
+        />
+    </Target>
+</Project>

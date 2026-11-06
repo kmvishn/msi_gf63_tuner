@@ -92,7 +92,7 @@ namespace YAMDCC.Common.Dialogs
             lblTitle.Name = "lblTitle";
             lblTitle.Size = new System.Drawing.Size(114, 32);
             lblTitle.TabIndex = 0;
-            lblTitle.Text = "YAMDCC";
+            lblTitle.Text = "MSI GF63 Tuner";
             // 
             // lblSubtitle
             // 
@@ -100,9 +100,9 @@ namespace YAMDCC.Common.Dialogs
             lblSubtitle.Location = new System.Drawing.Point(140, 35);
             lblSubtitle.Margin = new System.Windows.Forms.Padding(3, 0, 3, 3);
             lblSubtitle.Name = "lblSubtitle";
-            lblSubtitle.Size = new System.Drawing.Size(214, 15);
+            lblSubtitle.Size = new System.Drawing.Size(260, 15);
             lblSubtitle.TabIndex = 1;
-            lblSubtitle.Text = "(Yet Another MSI Dragon Center Clone)";
+            lblSubtitle.Text = "Hardware Control & Telemetry Suite";
             // 
             // tblMain
             // 
@@ -241,7 +241,7 @@ namespace YAMDCC.Common.Dialogs
             this.MinimizeBox = false;
             this.Name = "VersionDialog";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "About YAMDCC";
+            this.Text = "About MSI GF63 Tuner";
             ((System.ComponentModel.ISupportInitialize)(picLogo)).EndInit();
             tblMain.ResumeLayout(false);
             tblMain.PerformLayout();

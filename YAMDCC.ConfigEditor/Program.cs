@@ -83,12 +83,10 @@ internal static class Program
                     }
 
                     if (Utils.ShowWarning(
-                        "YAMDCC has detected the following MSI Center services are running:\n\n" +
+                        "MSI GF63 Tuner has detected the following MSI Center services are running:\n\n" +
                         $"{sb}\n\n" +
                         "It is highly recommended that you uninstall MSI Center before using " +
-                        "YAMDCC, otherwise the two *WILL* conflict with each other. See issues " +
-                        "#98 and #115 on Codeberg for examples of issues caused by MSI Center " +
-                        "running in the background.\n\n" +
+                        "MSI GF63 Tuner, otherwise the two *WILL* conflict with each other.\n\n" +
                         "Proceed anyways?", "MSI Center detected!",
                         MessageBoxDefaultButton.Button2) != DialogResult.Yes)
                     {

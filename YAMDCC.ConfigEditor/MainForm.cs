@@ -20,6 +20,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using YAMDCC.Common;
 using YAMDCC.Common.Configs;
@@ -101,6 +102,15 @@ internal sealed partial class MainForm : Form
     /// <summary>Requested by --overlay / --osd, applied once the form loads.</summary>
     private readonly bool StartOverlay, StartOsd;
 
+    #region System Tray
+    private NotifyIcon notifyIcon;
+    private ContextMenuStrip cmsTray;
+    private ToolStripMenuItem tmiTrayProfiles;
+    private ToolStripMenuItem tmiTrayFullBlast;
+    private bool allowExplicitExit;
+    private bool hasShownTrayBalloon;
+    #endregion
+
     public MainForm() : this(false, false) { }
 
     public MainForm(bool startOverlay, bool startOsd)
@@ -126,7 +136,7 @@ internal sealed partial class MainForm : Form
         Icon = Utils.GetEntryAssemblyIcon();
 
         // set title text to include program version
-        Text = $"msi_gf63_tuner - config editor - v{Utils.GetVerString()}";
+        Text = $"MSI GF63 Tuner v{Utils.GetVerString()}";
 
         // set literally every tooltip
         tsiLoadConf.ToolTipText = Strings.GetString("ttLoadConf");
@@ -208,6 +218,7 @@ internal sealed partial class MainForm : Form
             }
             CommonConfig.SetAutoUpdateAsked(true);
         }
+        InitSystemTray();
         DisableAll();
     }
 
@@ -221,7 +232,7 @@ internal sealed partial class MainForm : Form
 
         ProgressDialog<bool> dlg = new()
         {
-            Caption = "Connecting to YAMDCC service...",
+            Caption = "Connecting to MSI GF63 Tuner service...",
             DoWork = () => !IPCClient.WaitForConnection(5000)
         };
         dlg.ShowDialog();
@@ -254,9 +265,38 @@ internal sealed partial class MainForm : Form
         }
     }
 
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        TrimMemory();
+    }
+
+    protected override void OnResize(EventArgs e)
+    {
+        base.OnResize(e);
+        if (WindowState == FormWindowState.Minimized)
+        {
+            HideToTray();
+        }
+    }
+
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
+        if (!allowExplicitExit && e.CloseReason == CloseReason.UserClosing)
+        {
+            e.Cancel = true;
+            HideToTray();
+            return;
+        }
+
         base.OnFormClosing(e);
+
+        if (notifyIcon != null)
+        {
+            notifyIcon.Visible = false;
+            notifyIcon.Dispose();
+            notifyIcon = null;
+        }
 
         // hand the RTSS slot back and drop the overlay, so neither outlives
         // the program
@@ -325,6 +365,11 @@ internal sealed partial class MainForm : Form
                     {
                         lblTempC.Text = $"{cpuTemp}°C";
                         lblTempG.Text = $"{gpuTemp}°C";
+                        if (notifyIcon != null)
+                        {
+                            string tip = $"MSI GF63 Tuner: CPU {cpuTemp}°C | GPU {gpuTemp}°C";
+                            if (tip.Length < 64) { notifyIcon.Text = tip; }
+                        }
                     }
                     break;
                 }
@@ -452,7 +497,7 @@ internal sealed partial class MainForm : Form
         {
             AddExtension = true,
             CheckFileExists = true,
-            Filter = "YAMDCC config files|*.xml",
+            Filter = "MSI GF63 Tuner config files|*.xml",
             Title = "Load config",
         };
 
@@ -474,7 +519,7 @@ internal sealed partial class MainForm : Form
         SaveFileDialog sfd = new()
         {
             AddExtension = true,
-            Filter = "YAMDCC config files|*.xml",
+            Filter = "MSI GF63 Tuner config files|*.xml",
             FileName = Config.Model.Replace(' ', '-'),
             Title = "Save config",
         };
@@ -489,6 +534,7 @@ internal sealed partial class MainForm : Form
 
     private void tsiExit_Click(object sender, EventArgs e)
     {
+        allowExplicitExit = true;
         Close();
     }
     #endregion
@@ -1835,7 +1881,7 @@ internal sealed partial class MainForm : Form
             {
                 Utils.ShowError(
                     "Updater.exe not found!\n" +
-                    $"YAMDCC expected it to be located at: {path}\n\n" +
+                    $"MSI GF63 Tuner expected it to be located at: {path}\n\n" +
                     "This is likely a bug; please report it along with what you were doing before this message appeared.");
             }
             else
@@ -1844,5 +1890,130 @@ internal sealed partial class MainForm : Form
             }
         }
     }
+
+    #region System Tray & RAM Optimization
+    private void InitSystemTray()
+    {
+        cmsTray = new ContextMenuStrip();
+        Theme.Apply(cmsTray);
+
+        ToolStripMenuItem tmiHeader = new("MSI GF63 Tuner")
+        {
+            Font = new Font(Font, FontStyle.Bold),
+            ForeColor = Theme.Accent,
+            Enabled = false
+        };
+        cmsTray.Items.Add(tmiHeader);
+        cmsTray.Items.Add(new ToolStripSeparator());
+
+        tmiTrayProfiles = new ToolStripMenuItem("Fan Profile");
+        cmsTray.Items.Add(tmiTrayProfiles);
+
+        tmiTrayFullBlast = new ToolStripMenuItem("Full Blast Fan", null, (s, e) =>
+        {
+            chkFullBlast.Checked = !chkFullBlast.Checked;
+        });
+        cmsTray.Items.Add(tmiTrayFullBlast);
+
+        cmsTray.Items.Add(new ToolStripSeparator());
+
+        ToolStripMenuItem tmiOpen = new("Open Tuner", null, (s, e) => RestoreFromTray())
+        {
+            Font = new Font(Font, FontStyle.Bold)
+        };
+        cmsTray.Items.Add(tmiOpen);
+
+        ToolStripMenuItem tmiExit = new("Exit", null, (s, e) =>
+        {
+            allowExplicitExit = true;
+            Close();
+        });
+        cmsTray.Items.Add(tmiExit);
+
+        notifyIcon = new NotifyIcon
+        {
+            Icon = this.Icon,
+            ContextMenuStrip = cmsTray,
+            Text = "MSI GF63 Tuner",
+            Visible = true
+        };
+
+        notifyIcon.DoubleClick += (s, e) => RestoreFromTray();
+        cmsTray.Opening += (s, e) => UpdateTrayMenuState();
+    }
+
+    private void UpdateTrayMenuState()
+    {
+        if (Config?.CpuFan?.FanProfs == null) { return; }
+
+        tmiTrayProfiles.DropDownItems.Clear();
+        for (int i = 0; i < Config.CpuFan.FanProfs.Count; i++)
+        {
+            int profIdx = i;
+            string profName = Config.CpuFan.FanProfs[i].Name;
+            ToolStripMenuItem item = new(profName, null, (s, e) =>
+            {
+                if (cboProfSel.Items.Count > profIdx)
+                {
+                    cboProfSel.SelectedIndex = profIdx;
+                    ApplyConf(this, EventArgs.Empty);
+                }
+            })
+            {
+                Checked = (cboProfSel.SelectedIndex == profIdx)
+            };
+            tmiTrayProfiles.DropDownItems.Add(item);
+        }
+
+        tmiTrayFullBlast.Checked = chkFullBlast.Checked;
+    }
+
+    private void HideToTray()
+    {
+        Hide();
+        tmrPoll.Stop();
+        TrimMemory();
+
+        if (!hasShownTrayBalloon && notifyIcon != null)
+        {
+            hasShownTrayBalloon = true;
+            notifyIcon.ShowBalloonTip(
+                1500,
+                "MSI GF63 Tuner",
+                "Running in background. Telemetry & fan control active.",
+                ToolTipIcon.Info);
+        }
+    }
+
+    private void RestoreFromTray()
+    {
+        Show();
+        WindowState = FormWindowState.Normal;
+        Activate();
+        BringToFront();
+        tmrPoll.Start();
+    }
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetProcessWorkingSetSize(IntPtr hProcess, IntPtr dwMinimumWorkingSetSize, IntPtr dwMaximumWorkingSetSize);
+
+    private static void TrimMemory()
+    {
+        try
+        {
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true);
+            GC.WaitForPendingFinalizers();
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true);
+            using (Process proc = Process.GetCurrentProcess())
+            {
+                SetProcessWorkingSetSize(proc.Handle, (IntPtr)(-1), (IntPtr)(-1));
+            }
+        }
+        catch
+        {
+        }
+    }
+    #endregion
     #endregion  // Private methods
 }

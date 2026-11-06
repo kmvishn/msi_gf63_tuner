@@ -2,26 +2,32 @@
     <PropertyGroup>
         <ApplicationIcon>fan.ico</ApplicationIcon>
         <ApplicationManifest>app.manifest</ApplicationManifest>
-        <AssemblyName>ConfigEditor</AssemblyName>
-        <AssemblyTitle>YAMDCC config editor</AssemblyTitle>
+        <AssemblyName>msi_gf63_tuner</AssemblyName>
+        <AssemblyTitle>MSI GF63 Tuner</AssemblyTitle>
         <OutputType>WinExe</OutputType>
-        <Title>YAMDCC config editor</Title>
+        <Title>MSI GF63 Tuner</Title>
         <UseWindowsForms>true</UseWindowsForms>
     </PropertyGroup>
     <ItemGroup>
-        <EmbeddedResource Remove="MainForm.resx"/>
+        <EmbeddedResource Remove="MainForm.resx" />
     </ItemGroup>
     <ItemGroup>
-        <None Include="MainForm.resx"/>
+        <None Include="MainForm.resx" />
     </ItemGroup>
     <ItemGroup>
-        <Reference Include="System.ServiceProcess"/>
+        <Reference Include="System.ServiceProcess" />
     </ItemGroup>
     <ItemGroup>
-        <Content Include="fan.ico"/>
+        <Content Include="fan.ico" />
     </ItemGroup>
     <ItemGroup>
-        <ProjectReference Include="..\YAMDCC.Common\YAMDCC.Common.csproj"/>
-        <ProjectReference Include="..\YAMDCC.IPC\YAMDCC.IPC.csproj"/>
+        <ProjectReference Include="..\YAMDCC.Common\YAMDCC.Common.csproj" />
+        <ProjectReference Include="..\YAMDCC.IPC\YAMDCC.IPC.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+      <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.48">
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        <PrivateAssets>all</PrivateAssets>
+      </PackageReference>
     </ItemGroup>
 </Project>
