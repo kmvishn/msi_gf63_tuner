@@ -18,6 +18,7 @@ using System;
 using System.ComponentModel;
 using System.IO;
 using System.IO.Pipes;
+using System.Management;
 using System.ServiceProcess;
 using System.Text;
 using System.Timers;
@@ -52,6 +53,10 @@ internal sealed class FanControlService : ServiceBase
     private EcInfo EcInfo;
 
     private bool FullBlastEnabled;
+
+    private ManagementEventWatcher MsiEventWatcher;
+    private DateTime LastHotkeyTime = DateTime.MinValue;
+    private readonly object HotkeyLock = new();
     #endregion
 
     /// <summary>
@@ -140,6 +145,9 @@ internal sealed class FanControlService : ServiceBase
             {
                 ApplyConf();
             }
+
+            // Start MSI ACPI WMI event watcher for Fn hotkeys
+            StartMsiEventWatcher();
         }
         catch (Exception ex)
         {
@@ -169,6 +177,9 @@ internal sealed class FanControlService : ServiceBase
 
     private void StopSvc()
     {
+        // Stop MSI ACPI event watcher
+        StopMsiEventWatcher();
+
         // disable Full Blast if it was enabled while running
         SetFullBlast(0);
 
@@ -198,6 +209,10 @@ internal sealed class FanControlService : ServiceBase
                     Log.Info(Strings.GetString("svcWake"));
                     ApplyConf();
                     CooldownTimer.Start();
+
+                    // Re-arm MSI ACPI event watcher
+                    StopMsiEventWatcher();
+                    StartMsiEventWatcher();
                 }
                 break;
         }
@@ -364,26 +379,29 @@ internal sealed class FanControlService : ServiceBase
                 if (args.Length == 1 && args[0] is int fanProf)
                 {
                     parseSuccess = true;
-                    // TODO: make nicer
-                    foreach (FanConf cfg in new FanConf[] { Config.CpuFan, Config.GpuFan })
+                    if (fanProf < 0)
                     {
-                        if (fanProf < 0)
-                        {
-                            if (Config.CpuFan.ProfSel >= cfg.FanProfs.Count - 1)
-                            {
-                                cfg.ProfSel = 0;
-                            }
-                            else
-                            {
-                                cfg.ProfSel++;
-                            }
-                        }
-                        else
-                        {
-                            cfg.ProfSel = fanProf;
-                        }
+                        cmdSuccess = CycleFanProfile();
                     }
-                    cmdSuccess = ApplyConf();
+                    else
+                    {
+                        Config.CpuFan.ProfSel = fanProf;
+                        if (Config.GpuFan?.FanProfs != null && Config.GpuFan.FanProfs.Count > 0)
+                        {
+                            Config.GpuFan.ProfSel = fanProf % Config.GpuFan.FanProfs.Count;
+                        }
+                        cmdSuccess = ApplyConf();
+                        try
+                        {
+                            Config.Save(Paths.CurrentConfV2);
+                        }
+                        catch { }
+                        try
+                        {
+                            IPCServer.PushMessage(new ServiceResponse(Response.ConfLoaded, -1));
+                        }
+                        catch { }
+                    }
                 }
                 break;
             }
@@ -740,4 +758,138 @@ internal sealed class FanControlService : ServiceBase
 
         return prof;
     }
+
+    #region ACPI WMI Event Watcher
+    private void StartMsiEventWatcher()
+    {
+        try
+        {
+            Log.Info("Starting MSI ACPI WMI event watcher (root\\wmi)...");
+            WqlEventQuery query = new("SELECT * FROM MSI_Event");
+            ManagementScope scope = new(@"root\wmi");
+            MsiEventWatcher = new ManagementEventWatcher(scope, query);
+            MsiEventWatcher.EventArrived += OnMsiEventArrived;
+            MsiEventWatcher.Start();
+            Log.Info("MSI ACPI WMI event watcher started successfully.");
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"Failed to start MSI ACPI WMI event watcher: {ex.Message}");
+        }
+    }
+
+    private void StopMsiEventWatcher()
+    {
+        if (MsiEventWatcher != null)
+        {
+            try
+            {
+                MsiEventWatcher.Stop();
+                MsiEventWatcher.Dispose();
+            }
+            catch { }
+            MsiEventWatcher = null;
+        }
+    }
+
+    private void OnMsiEventArrived(object sender, EventArrivedEventArgs e)
+    {
+        try
+        {
+            PropertyData prop = e.NewEvent?.Properties?["MSIEvt"];
+            if (prop?.Value == null)
+            {
+                return;
+            }
+
+            uint rawCode = Convert.ToUInt32(prop.Value, System.Globalization.CultureInfo.InvariantCulture);
+            byte scancode = (byte)(rawCode & 0xFF);
+
+            lock (HotkeyLock)
+            {
+                if ((DateTime.UtcNow - LastHotkeyTime).TotalMilliseconds < 400)
+                {
+                    Log.Debug($"[ACPI Event] Debouncing event: raw=0x{rawCode:X8}, scancode=0x{scancode:X2}");
+                    return;
+                }
+                LastHotkeyTime = DateTime.UtcNow;
+            }
+
+            Log.Info($"[ACPI Event] Received MSI_Event: raw=0x{rawCode:X8}, scancode=0x{scancode:X2} ({scancode})");
+
+            // MSI ACPI Scancodes:
+            // 0x1D (29): WIND_KEY_SETTINGS_NB (Fn + F7 User Scenario / Settings / Dragon Center)
+            // 0x29 (41): CLAW_KEY_CENTER (MSI Center button)
+            // 0x60 (96): WIND_KEY_TURBO (Fn + F10 / Cooler Boost)
+            // 0x69 (105): WIND_KEY_ECO (ECO mode)
+            switch (scancode)
+            {
+                case 0x1D: // Fn + F7 Scenario toggle
+                case 0x29:
+                    Log.Info($"[ACPI Event] Scenario key pressed (0x{scancode:X2}). Cycling fan profile...");
+                    CycleFanProfile();
+                    break;
+
+                case 0x60: // Turbo / Cooler Boost toggle
+                    Log.Info($"[ACPI Event] Turbo key pressed (0x{scancode:X2}). Toggling Full Blast...");
+                    SetFullBlast(FullBlastEnabled ? 0 : 1);
+                    break;
+
+                default:
+                    Log.Info($"[ACPI Event] Unhandled MSI event code: 0x{scancode:X2}");
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[ACPI Event] Error handling event: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Cycles to the next available fan profile and applies it.
+    /// </summary>
+    /// <returns>True if applied successfully, false otherwise.</returns>
+    private bool CycleFanProfile()
+    {
+        if (Config == null || Config.CpuFan?.FanProfs == null || Config.CpuFan.FanProfs.Count == 0)
+        {
+            Log.Warn("[ACPI Hotkey] Config or profiles not loaded, cannot cycle fan profile.");
+            return false;
+        }
+
+        int count = Config.CpuFan.FanProfs.Count;
+        int nextProf = (Config.CpuFan.ProfSel + 1) % count;
+        Config.CpuFan.ProfSel = nextProf;
+
+        if (Config.GpuFan?.FanProfs != null && Config.GpuFan.FanProfs.Count > 0)
+        {
+            Config.GpuFan.ProfSel = nextProf % Config.GpuFan.FanProfs.Count;
+        }
+
+        string profName = Config.CpuFan.FanProfs[nextProf].Name ?? $"Profile {nextProf}";
+        Log.Info($"[ACPI Hotkey] Switched fan profile to [{nextProf}] '{profName}'");
+
+        bool success = ApplyConf();
+
+        // Persist to CurrentConfigV2.xml so ConfigEditor and future sessions use it
+        try
+        {
+            Config.Save(Paths.CurrentConfV2);
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"[ACPI Hotkey] Failed to save updated config: {ex.Message}");
+        }
+
+        // Notify any open UI clients
+        try
+        {
+            IPCServer.PushMessage(new ServiceResponse(Response.ConfLoaded, -1));
+        }
+        catch { }
+
+        return success;
+    }
+    #endregion
 }

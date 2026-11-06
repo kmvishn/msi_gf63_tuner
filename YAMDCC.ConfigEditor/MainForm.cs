@@ -429,6 +429,11 @@ internal sealed partial class MainForm : Form
                     }
                     break;
                 }
+                case Response.ConfLoaded:
+                {
+                    LoadConf(Paths.CurrentConfV2);
+                    break;
+                }
             }
         });
     }
