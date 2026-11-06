@@ -18,10 +18,10 @@ performance and debloat tweaks for an MSI Thin GF63 12HW
 - [What gets tuned](#what-gets-tuned)
   - [Core fixes `[1]`–`[9]`](#core-fixes-19)
   - [Baseline `[4.x]`](#baseline-4x)
-  - [Advanced `[10]`–`[18]`](#advanced-1018)
+  - [Advanced `[10]`–`[18]`, `[34]`](#advanced-1018-34)
   - [GPU driver pin `[19]`](#gpu-driver-pin-19)
-  - [Idle-RAM debloat `[20]`–`[27]`](#idle-ram-debloat-2027)
-  - [Gaming `[28]`–`[29]`](#gaming-2829)
+  - [Idle-RAM debloat `[20]`–`[27]`, `[32]`](#idle-ram-debloat-2027-32)
+  - [Gaming `[28]`–`[30]`, `[33]`](#gaming-2830-33)
 - [Deliberately left alone](#deliberately-left-alone)
 - [Known gotchas](#known-gotchas)
 - [When to re-run](#when-to-re-run)
@@ -158,6 +158,7 @@ Tuning that predates this project, kept enforced:
 | 16 | Telemetry scheduled tasks off | CEIP, Compatibility Appraiser and DmClient kept running even with DiagTrack disabled. |
 | 17 | Realtek Ethernet EEE / Green / Power Saving off | Caused link drops when docked. |
 | 18 | WSL2 `autoMemoryReclaim=gradual`, `sparseVhd=true` | **Check only.** Edit `%USERPROFILE%\.wslconfig` by hand, then `wsl --shutdown`. |
+| 34 | Wi-Fi roaming aggressiveness = Lowest | Stops the AX201 from background-scanning for other BSSIDs when signal fluctuates, preventing ping spikes. |
 
 ### GPU driver pin `[19]`
 
@@ -175,7 +176,7 @@ Arc A370M (`DEV_5693`).
 Order matters: **install the driver you want and reboot first, then pin it.**
 To update later: `-Gpu Lift`, then install and reboot, then `-Gpu PerDevice`.
 
-### Idle-RAM debloat `[20]`–`[27]`
+### Idle-RAM debloat `[20]`–`[27]`, `[32]`
 
 Small trims found during an idle-RAM audit. Expect roughly 100–300 MB less
 memory use and fewer background wakeups.
@@ -190,15 +191,19 @@ memory use and fewer background wakeups.
 | 25 | Game DVR background capture off (policy) | |
 | 26 | Taskbar search box hidden *(per user)* | SearchHost was using about 430 MB. Search from Start still works. |
 | 27 | **Nahimic audio kept ON** (exception) | Nahimic's sound effects are what make this laptop's speakers sound good. Its service and session tasks are kept on, so no debloat run can switch them off. |
+| 32 | Brave background mode off (policy) | Stops extensions and background worker processes staying in RAM after close. |
 
-### Gaming `[28]`–`[29]`
+### Gaming `[28]`–`[30]`, `[33]`
 
-Added for Fortnite. Both are per-user settings.
+Added for Fortnite.
 
 | # | Setting | Notes |
 |---|---|---|
-| 28 | **Fortnite runs on the Arc A370M** | Without this, Windows may run the game on the much slower Iris Xe. Same as Settings → Display → Graphics → Fortnite → *High performance*. Re-apply if Epic moves the game folder. |
-| 29 | Game Mode on | Already on; now enforced. |
+| 28 | **Fortnite runs on the Arc A370M** | Without this, Windows may run the game on the much slower Iris Xe. Same as Settings → Display → Graphics → Fortnite → *High performance*. Re-apply if Epic moves the game folder. *(per user)* |
+| 28b | **Daily apps on Iris Xe (Power saving)** | Binds Antigravity IDE and ConfigEditor to Iris Xe, preventing them from waking or holding VRAM on the Arc dGPU. *(per user)* |
+| 29 | Game Mode on | Already on; now enforced. *(per user)* |
+| 30 | **HAGS (Hardware-Accelerated GPU Scheduling)** | Offloads frame scheduling to Arc A370M's dedicated scheduling processor, boosting 1% low FPS. *(reboot required)* |
+| 33 | Network throttling off + SystemResponsiveness 0 | Disables Windows NDIS packet throttling (`0xFFFFFFFF`) and dedicates 100% CPU priority to foreground games. |
 
 Already helping: Game DVR off `[25]`, memory compression `[15]`, CPU at 100%
 on AC `[2]`, and the AC-only latency tweaks `[12]`/`[13]`. Easy Anti-Cheat is

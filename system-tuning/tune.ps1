@@ -424,6 +424,16 @@ Add-Item 18 advanced 'WSL2 autoMemoryReclaim=gradual + sparseVhd=true' {
     Res ($a -and $b) "autoMemoryReclaim=$a sparseVhd=$b"
 } $null 'add both lines under [wsl2] in %USERPROFILE%\.wslconfig, then: wsl --shutdown'
 
+# [34] Wi-Fi Roaming Aggressiveness = Lowest.
+#      WHY: stops the AX201 from background-scanning for other BSSIDs when signal
+#           strength fluctuates, preventing 50-100ms ping spikes during gaming.
+#      REVERT: Set-NetAdapterAdvancedProperty -Name WiFi -DisplayName 'Roaming Aggressiveness' -DisplayValue '3. Medium'
+Add-Item 34 advanced 'Wi-Fi Roaming Aggressiveness = Lowest' {
+    $p = Get-NetAdapterAdvancedProperty -Name WiFi -RegistryKeyword RoamAggressiveness -EA 0
+    if (-not $p) { return SkipRes 'Roaming Aggressiveness property not found' }
+    Res ($p.RegistryValue -contains '1' -or $p.DisplayValue -match 'Lowest') $p.DisplayValue
+} { Set-NetAdapterAdvancedProperty -Name WiFi -DisplayName 'Roaming Aggressiveness' -DisplayValue '1. Lowest' -EA Stop } -Wifi
+
 # ------------------------------------------- idle-RAM debloat [20]-[27] (S8)
 # ---- Section 8: idle-RAM / background debloat (2026-10-10) ----------------
 # Found during an idle-RAM audit. Each is small; together ~100-300 MB plus
@@ -511,8 +521,17 @@ Add-Item 26 debloat 'Taskbar search box hidden (HKCU)' {
     $v = RegVal 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Search' SearchboxTaskbarMode; Res ($v -eq 0 -and $null -ne $v) $v
 } { Set-Dword 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Search' SearchboxTaskbarMode 0 } -Hkcu
 
-# ---------------------------------------------------------- gaming [28]-[29]
-# Added 2026-10-10 for Fortnite. Both are per-user (HKCU) settings.
+# [32] Brave browser background mode off (policy) -- companion to [23] Edge.
+#      WHY: stops Brave extensions and worker processes from staying resident
+#           in RAM after closing the browser window.
+#      REVERT: Remove-ItemProperty 'HKLM:\SOFTWARE\Policies\BraveSoftware\Brave' -Name BackgroundModeEnabled
+Add-Item 32 debloat 'Brave background mode off (policy)' {
+    $v = RegVal 'HKLM:\SOFTWARE\Policies\BraveSoftware\Brave' BackgroundModeEnabled
+    Res ($v -eq 0 -and $null -ne $v) $v
+} { Set-Dword 'HKLM:\SOFTWARE\Policies\BraveSoftware\Brave' BackgroundModeEnabled 0 }
+
+# ---------------------------------------------------------- gaming [28]-[30],[33]
+# Added for Fortnite / gaming performance.
 
 # [28] Fortnite runs on the Arc A370M (high-performance GPU), not the Iris Xe.
 #      WHY: with no per-app preference Windows may run the game on the iGPU --
@@ -532,11 +551,61 @@ Add-Item 28 gaming 'Fortnite on high-performance GPU (Arc) (HKCU)' {
     Set-ItemProperty $GpuPrefKey -Name $FortniteExe -Value 'GpuPreference=2;' -Type String
 } -Hkcu
 
+# [28b] Daily apps (IDE, ConfigEditor) bound to power-saving iGPU (Iris Xe).
+#       WHY: prevents desktop & utility apps from waking or allocating VRAM on the Arc dGPU.
+#       REVERT: Remove-ItemProperty HKCU:\Software\Microsoft\DirectX\UserGpuPreferences -Name '<exe path>'
+$iGpuApps = @(
+    'C:\Users\vishnu\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe',
+    'C:\Program Files\kmvishn\msi_gf63_tuner\ConfigEditor.exe'
+)
+Add-Item '28b' gaming 'Dev & utility apps on power-saving GPU (Iris Xe) (HKCU)' {
+    $present = @($iGpuApps | Where-Object { Test-Path $_ })
+    if (-not $present.Count) { return SkipRes 'none present' }
+    $bad = @($present | Where-Object { (RegVal $GpuPrefKey $_) -notmatch 'GpuPreference=1;' })
+    Res ($bad.Count -eq 0) $(if ($bad.Count) { 'not on Iris Xe: ' + (($bad | ForEach-Object { Split-Path $_ -Leaf }) -join ', ') } else { "$($present.Count)/$($present.Count) on Iris Xe" })
+} {
+    Ensure-Key $GpuPrefKey
+    foreach ($app in $iGpuApps) {
+        if (Test-Path $app) { Set-ItemProperty $GpuPrefKey -Name $app -Value 'GpuPreference=1;' -Type String }
+    }
+} -Hkcu
+
 # [29] Game Mode on (HKCU). WHY: Windows prioritises the game's threads and
 #      holds back Windows Update installs / notifications while it runs.
 Add-Item 29 gaming 'Game Mode on (HKCU)' {
     $v = RegVal 'HKCU:\Software\Microsoft\GameBar' AutoGameModeEnabled; Res ($v -eq 1) $v
 } { Set-Dword 'HKCU:\Software\Microsoft\GameBar' AutoGameModeEnabled 1 } -Hkcu
+
+# [30] Hardware-Accelerated GPU Scheduling (HAGS) on.
+#      WHY: on Intel Arc A370M (Alchemist Xe-HPG), HAGS offloads frame scheduling
+#           from the CPU to the GPU scheduling processor. Reduces CPU overhead
+#           and improves 1% low FPS / frame pacing in DX12 games (Fortnite).
+#      REVERT: Remove-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers' -Name HwSchMode
+Add-Item 30 gaming 'Hardware-Accelerated GPU Scheduling (HAGS) on' {
+    $v = RegVal 'HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers' HwSchMode
+    Res ($v -eq 2) $(if ($null -ne $v) { $v } else { 'not set (disabled)' })
+} {
+    Set-Dword 'HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers' HwSchMode 2
+    Write-Host '           NOTE: REBOOT required for HAGS to take effect' -ForegroundColor Yellow
+}
+
+# [33] Network throttling disabled & System Responsiveness for gaming.
+#      WHY: NetworkThrottlingIndex=0xFFFFFFFF stops Windows NDIS from throttling
+#           non-multimedia network packets (reducing ping jitter).
+#           SystemResponsiveness=0 gives foreground games full CPU priority.
+#           (If heavy background streaming alongside games ever stalls, use 10).
+#      REVERT: Set-Dword 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile' NetworkThrottlingIndex 10
+#              Set-Dword 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile' SystemResponsiveness 20
+Add-Item 33 gaming 'Network throttling off + SystemResponsiveness 0' {
+    $k = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile'
+    $n = RegVal $k NetworkThrottlingIndex; $s = RegVal $k SystemResponsiveness
+    $nOk = ($n -eq -1 -or $n -eq 0xffffffff -or $n -eq [uint32]::MaxValue)
+    Res ($nOk -and $s -eq 0) "NetworkThrottling=$n SystemResponsiveness=$s"
+} {
+    $k = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile'
+    Set-Dword $k NetworkThrottlingIndex 0xffffffff
+    Set-Dword $k SystemResponsiveness 0
+}
 
 # =============================================================================
 #  [19] GPU driver pin vs Windows Update  (separate action -- not part of Apply)
@@ -726,9 +795,9 @@ function Show-Menu {
         Write-Host '  2  Apply EVERYTHING that drifted'
         Write-Host '  3  Apply core fixes        [1]-[9]'
         Write-Host '  4  Apply baseline          NTFS, visual FX, services'
-        Write-Host '  5  Apply advanced          [10]-[18]'
-        Write-Host '  6  Apply idle-RAM debloat  [20]-[27]'
-        Write-Host '  G  Apply gaming            [28]-[29]  (Fortnite GPU, Game Mode)'
+        Write-Host '  5  Apply advanced          [10]-[18],[34]'
+        Write-Host '  6  Apply idle-RAM debloat  [20]-[27],[32]'
+        Write-Host '  G  Apply gaming            [28]-[30],[33]  (Fortnite, HAGS, Latency, Game Mode)'
         Write-Host '  7  Apply specific items    (enter IDs, e.g. 15,23)'
         Write-Host '  8  GPU driver pin          [19]'
         Write-Host '  9  List all items'

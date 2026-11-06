@@ -888,6 +888,9 @@
           even elevated: the packaged-service SDDL grants config rights only to
           the package SID, not Administrators. Can be STOPPED, not
           reconfigured; returns with each app update. Idle cost ~nil.
+ Windows Widgets policy (Dsh\AllowNewsAndInterests) -- Set-ItemProperty fails "UnauthorizedAccessException"
+          even elevated due to Windows 11's UserChoice Protection Driver (UCPD.sys filter driver).
+          TaskbarDa=0 already hides the taskbar widget icon, and WidgetService is not resident. Left alone.
  CrossDeviceResume process (~60 MB) -- setting already off ([8]); the shell
           relaunches the process, so killing it doesn't stick.
  Defender, Themes, FontCache, WpnService, UsoSvc, DoSvc service -- keep.
@@ -907,6 +910,19 @@
             <Fortnite>\...\Win64\FortniteClient-Win64-Shipping.exe = "GpuPreference=2;"
           (= Settings > Display > Graphics > Fortnite > High performance)
  NOTE     Path is the default Epic install. If Epic moves it, re-apply.
+ REVERT   Remove-ItemProperty HKCU:\Software\Microsoft\DirectX\UserGpuPreferences -Name '<exe path>'
+
+-------------------------------------------------------------------------------
+ [28b] DEV & UTILITY APPS -> POWER-SAVING GPU (Iris Xe)     ADDED 2026-11-06
+-------------------------------------------------------------------------------
+ WHY      Brave and Postman were already bound to power-saving (Iris Xe), but
+          Antigravity IDE and YAMDCC ConfigEditor had no preference, causing
+          them to open D3D handles and allocate VRAM on the Arc A370M dGPU.
+          Binding them to GpuPreference=1 ensures the Arc dGPU stays completely
+          dormant/idle until a real 3D game (Fortnite) launches.
+ AFTER    HKCU\Software\Microsoft\DirectX\UserGpuPreferences
+            <IDE path> = "GpuPreference=1;"
+            <ConfigEditor path> = "GpuPreference=1;"
  REVERT   Remove-ItemProperty HKCU:\Software\Microsoft\DirectX\UserGpuPreferences -Name '<exe path>'
 
 -------------------------------------------------------------------------------
@@ -934,6 +950,54 @@
                 than speed: Ethernet best ([17] already tuned it), else join
                 the router's 5 GHz SSID by name.
  POWER          Plugged in, MSI Center performance/fan mode; Balanced plan OK.
+
+
+-------------------------------------------------------------------------------
+ [30] HARDWARE-ACCELERATED GPU SCHEDULING (HAGS) -> ON      ADDED 2026-11-06
+-------------------------------------------------------------------------------
+ WHY      Intel Arc A370M (Alchemist Xe-HPG) supports hardware GPU scheduling.
+          Offloads task scheduling from the CPU to the GPU scheduling processor,
+          reducing CPU overhead and significantly improving 1% low frame pacing
+          in DirectX 12 games (Fortnite).
+ AFTER    HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers
+            HwSchMode = 2
+ NOTE     Requires a system reboot to activate the GPU scheduling engine.
+ REVERT   Remove-ItemProperty HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers -Name HwSchMode
+
+-------------------------------------------------------------------------------
+ [32] BRAVE BROWSER BACKGROUND MODE -> OFF (policy)         ADDED 2026-11-06
+-------------------------------------------------------------------------------
+ WHY      Companion to [23] (Edge). Brave is the primary browser (~1.6 GB RAM).
+          By default, Chromium keeps background processes and extensions alive
+          after the last window closes.
+ AFTER    HKLM\SOFTWARE\Policies\BraveSoftware\Brave
+            BackgroundModeEnabled = 0
+ REVERT   Remove-ItemProperty HKLM:\SOFTWARE\Policies\BraveSoftware\Brave -Name BackgroundModeEnabled
+
+-------------------------------------------------------------------------------
+ [33] NETWORK THROTTLING & SYSTEM RESPONSIVENESS -> OFF     ADDED 2026-11-06
+-------------------------------------------------------------------------------
+ WHY      Windows NDIS throttles non-multimedia network packets when network traffic
+          is high or media is playing. NetworkThrottlingIndex = 0xFFFFFFFF
+          disables packet throttling, eliminating ping jitter in games.
+          SystemResponsiveness = 0 stops Windows from reserving 20% of CPU for
+          low-priority background tasks when gaming.
+ AFTER    HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile
+            NetworkThrottlingIndex = 0xffffffff
+            SystemResponsiveness   = 0
+ NOTE     If heavy multitasking or background streaming alongside games ever causes
+          background audio/app stalls, set SystemResponsiveness to 10 (conservative 10% reserve).
+ REVERT   Set-Dword 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile' NetworkThrottlingIndex 10
+          Set-Dword 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile' SystemResponsiveness 20
+
+-------------------------------------------------------------------------------
+ [34] WI-FI ROAMING AGGRESSIVENESS -> LOWEST                ADDED 2026-11-06
+-------------------------------------------------------------------------------
+ WHY      On Intel AX201, default roaming aggressiveness (3. Medium) triggers
+          periodic background Wi-Fi band/BSSID scans when signal drops slightly,
+          causing 50-100ms latency spikes in online games (Fortnite).
+ AFTER    Wi-Fi advanced property: RoamAggressiveness = 1. Lowest
+ REVERT   Set-NetAdapterAdvancedProperty -Name WiFi -DisplayName 'Roaming Aggressiveness' -DisplayValue '3. Medium'
 
 ===============================================================================
  END OF LOG
