@@ -820,8 +820,10 @@ internal sealed class FanControlService : ServiceBase
             // MSI ACPI Scancodes:
             // 0x1D (29): WIND_KEY_SETTINGS_NB (Fn + F7 User Scenario / Settings / Dragon Center)
             // 0x29 (41): CLAW_KEY_CENTER (MSI Center button)
+            // 0x5F (95): WIND_KEY_WLAN (Fn + F10 Flight / Airplane mode)
             // 0x60 (96): WIND_KEY_TURBO (Fn + F10 / Cooler Boost)
-            // 0x69 (105): WIND_KEY_ECO (ECO mode)
+            // 0x69 (105): WIND_KEY_ECO (ECO mode / Flight mode on some models)
+            // 0x7A (122) / 0x7E: Sleep key / Moon icon (Fn + F12)
             switch (scancode)
             {
                 case 0x1D: // Fn + F7 Scenario toggle
@@ -830,13 +832,25 @@ internal sealed class FanControlService : ServiceBase
                     CycleFanProfile();
                     break;
 
+                case 0x5F: // Fn + F10 Flight mode / WLAN toggle
+                case 0x69:
+                    Log.Info($"[ACPI Event] Flight / WLAN key pressed (0x{scancode:X2}). Toggling Airplane Mode...");
+                    SystemControl.ToggleAirplaneMode(Log);
+                    break;
+
                 case 0x60: // Turbo / Cooler Boost toggle
                     Log.Info($"[ACPI Event] Turbo key pressed (0x{scancode:X2}). Toggling Full Blast...");
                     SetFullBlast(FullBlastEnabled ? 0 : 1);
                     break;
 
+                case 0x7A: // Fn + F12 Sleep / Moon key
+                case 0x7E:
+                    Log.Info($"[ACPI Event] Sleep key pressed (0x{scancode:X2}). Putting system to sleep...");
+                    SystemControl.TriggerSleep(Log);
+                    break;
+
                 default:
-                    Log.Info($"[ACPI Event] Unhandled MSI event code: 0x{scancode:X2}");
+                    Log.Info($"[ACPI Event] Unhandled MSI event code: 0x{scancode:X2} (raw=0x{rawCode:X8})");
                     break;
             }
         }
