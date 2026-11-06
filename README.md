@@ -11,7 +11,7 @@ A high-performance, lightweight fan control, hardware tuning, and sensor monitor
 * **Single Standalone Executable (`msi_gf63_tuner.exe`):** No loose companion DLLs, no extra EXEs, and no separate Windows service installation needed. All core assemblies and the embedded fan control engine are packed into a single portable binary.
 * **100% Driverless ACPI Control (WMI2):** Communicates with the embedded controller directly through MSI's native `MSI_ACPI` WMI interface (`root\WMI`). Eliminates vulnerable kernel drivers like `WinRing0.sys` or `RTCore64.sys` so Windows Defender will never flag or block it.
 * **Cyberpunk Sci-Fi Tactical HUD UI:** High-tech dark aesthetic featuring chamfered sci-fi tabs, live laser telemetry pods with HUD bracket corners `[  ]`, high-voltage reactor sliders, and Arasaka Neon Red (`#FF003C`) & Electric Cyber Cyan (`#00F0FF`) accents.
-* **Unified 5-Profile Performance Matrix:** Single intuitive profile selector on the main tab with five finely tuned profiles:
+* **Unified Single-Fan Architecture & 5-Profile Performance Matrix:** Specifically designed for the single-fan cooling loop of the GF63. Eliminates confusing dual-fan CPU/GPU toggles and phantom sensors while transparently writing synchronized curves to both EC thermal registers. Features five tailored profiles:
   - **Balanced:** Daily optimal acoustic and thermal balance.
   - **Performance:** Aggressive ramp-up to 100% fan speed for intensive workloads and gaming.
   - **Sustained 35W:** Custom engineered curve for PL1=35W / PL2=60W sustained thin-chassis thermals.
