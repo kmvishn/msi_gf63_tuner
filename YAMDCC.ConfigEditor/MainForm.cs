@@ -844,7 +844,13 @@ internal sealed partial class MainForm : Form
             .FanProfs[cfg.ProfSel].PerfMode + 1;
         cboProfPerfMode.Enabled = true;
 
-        bool enable = curveCfg.Name != "Default";
+        if (curveCfg.PerfMode != PerfMode.Default)
+        {
+            Config.PerfMode = curveCfg.PerfMode;
+            cboPerfMode.SelectedIndex = (int)curveCfg.PerfMode;
+        }
+
+        bool enable = true;
         for (int i = 0; i < numFanSpds.Length; i++)
         {
             // Fan profile
@@ -863,14 +869,27 @@ internal sealed partial class MainForm : Form
                 numDownTs[i].Enabled = enable;
             }
         }
-        btnProfDel.Enabled = enable;
-        tsiProfDel.Enabled = enable;
+        btnProfDel.Enabled = cfg.FanProfs.Count > 1;
+        tsiProfDel.Enabled = cfg.FanProfs.Count > 1;
     }
 
     private void ProfPerfModeChanged(object sender, EventArgs e)
     {
-        int i = cboProfPerfMode.SelectedIndex;
-        Config.CpuFan.FanProfs[i].PerfMode = (PerfMode)(i - 1);
+        int perfIdx = cboProfPerfMode.SelectedIndex;
+        if (cboProfSel.SelectedIndex >= 0 && cboProfSel.SelectedIndex < Config.CpuFan.FanProfs.Count)
+        {
+            PerfMode mode = (PerfMode)(perfIdx - 1);
+            Config.CpuFan.FanProfs[cboProfSel.SelectedIndex].PerfMode = mode;
+            if (Config.GpuFan?.FanProfs != null && cboProfSel.SelectedIndex < Config.GpuFan.FanProfs.Count)
+            {
+                Config.GpuFan.FanProfs[cboProfSel.SelectedIndex].PerfMode = mode;
+            }
+            if (mode != PerfMode.Default)
+            {
+                Config.PerfMode = mode;
+                cboPerfMode.SelectedIndex = (int)mode;
+            }
+        }
 
         /*if (i > 0)
         {

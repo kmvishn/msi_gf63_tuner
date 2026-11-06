@@ -881,8 +881,16 @@ internal sealed class FanControlService : ServiceBase
             Config.GpuFan.ProfSel = nextProf % Config.GpuFan.FanProfs.Count;
         }
 
-        string profName = Config.CpuFan.FanProfs[nextProf].Name ?? $"Profile {nextProf}";
-        Log.Info($"[ACPI Hotkey] Switched fan profile to [{nextProf}] '{profName}'");
+        FanProf activeProf = Config.CpuFan.FanProfs[nextProf];
+        string profName = activeProf.Name ?? $"Profile {nextProf}";
+
+        // If the profile defines an associated performance mode, synchronize Config.PerfMode
+        if (activeProf.PerfMode != PerfMode.Default)
+        {
+            Config.PerfMode = activeProf.PerfMode;
+        }
+
+        Log.Info($"[ACPI Hotkey] Switched fan profile to [{nextProf}] '{profName}' (PerfMode: {Config.PerfMode})");
 
         bool success = ApplyConf();
 
