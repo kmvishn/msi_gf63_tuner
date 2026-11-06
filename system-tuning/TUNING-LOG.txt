@@ -891,6 +891,11 @@
  Windows Widgets policy (Dsh\AllowNewsAndInterests) -- Set-ItemProperty fails "UnauthorizedAccessException"
           even elevated due to Windows 11's UserChoice Protection Driver (UCPD.sys filter driver).
           TaskbarDa=0 already hides the taskbar widget icon, and WidgetService is not resident. Left alone.
+ Hardware-Accelerated GPU Scheduling (HAGS, HwSchMode=2) -- Intel Arc A-Series
+          (Alchemist: A370M, A770, etc.) lacks the dedicated on-die hardware scheduling
+          microcontroller (confirmed architectural limitation in Intel KB 000056788).
+          HAGS is only supported on Battlemage (Xe2) or newer. Setting HwSchMode=2
+          fails driver capability checks and is ignored by Windows. Left alone.
  CrossDeviceResume process (~60 MB) -- setting already off ([8]); the shell
           relaunches the process, so killing it doesn't stick.
  Defender, Themes, FontCache, WpnService, UsoSvc, DoSvc service -- keep.
@@ -951,18 +956,6 @@
                 the router's 5 GHz SSID by name.
  POWER          Plugged in, MSI Center performance/fan mode; Balanced plan OK.
 
-
--------------------------------------------------------------------------------
- [30] HARDWARE-ACCELERATED GPU SCHEDULING (HAGS) -> ON      ADDED 2026-11-06
--------------------------------------------------------------------------------
- WHY      Intel Arc A370M (Alchemist Xe-HPG) supports hardware GPU scheduling.
-          Offloads task scheduling from the CPU to the GPU scheduling processor,
-          reducing CPU overhead and significantly improving 1% low frame pacing
-          in DirectX 12 games (Fortnite).
- AFTER    HKLM\SYSTEM\CurrentControlSet\Control\GraphicsDrivers
-            HwSchMode = 2
- NOTE     Requires a system reboot to activate the GPU scheduling engine.
- REVERT   Remove-ItemProperty HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers -Name HwSchMode
 
 -------------------------------------------------------------------------------
  [32] BRAVE BROWSER BACKGROUND MODE -> OFF (policy)         ADDED 2026-11-06

@@ -577,19 +577,6 @@ Add-Item 29 gaming 'Game Mode on (HKCU)' {
     $v = RegVal 'HKCU:\Software\Microsoft\GameBar' AutoGameModeEnabled; Res ($v -eq 1) $v
 } { Set-Dword 'HKCU:\Software\Microsoft\GameBar' AutoGameModeEnabled 1 } -Hkcu
 
-# [30] Hardware-Accelerated GPU Scheduling (HAGS) on.
-#      WHY: on Intel Arc A370M (Alchemist Xe-HPG), HAGS offloads frame scheduling
-#           from the CPU to the GPU scheduling processor. Reduces CPU overhead
-#           and improves 1% low FPS / frame pacing in DX12 games (Fortnite).
-#      REVERT: Remove-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers' -Name HwSchMode
-Add-Item 30 gaming 'Hardware-Accelerated GPU Scheduling (HAGS) on' {
-    $v = RegVal 'HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers' HwSchMode
-    Res ($v -eq 2) $(if ($null -ne $v) { $v } else { 'not set (disabled)' })
-} {
-    Set-Dword 'HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers' HwSchMode 2
-    Write-Host '           NOTE: REBOOT required for HAGS to take effect' -ForegroundColor Yellow
-}
-
 # [33] Network throttling disabled & System Responsiveness for gaming.
 #      WHY: NetworkThrottlingIndex=0xFFFFFFFF stops Windows NDIS from throttling
 #           non-multimedia network packets (reducing ping jitter).
@@ -798,7 +785,7 @@ function Show-Menu {
         Write-Host '  4  Apply baseline          NTFS, visual FX, services'
         Write-Host '  5  Apply advanced          [10]-[18],[34]'
         Write-Host '  6  Apply idle-RAM debloat  [20]-[27],[32]'
-        Write-Host '  G  Apply gaming            [28]-[30],[33]  (Fortnite, HAGS, Latency, Game Mode)'
+        Write-Host '  G  Apply gaming            [28],[28b],[29],[33]  (Fortnite, iGPU binding, Latency, Game Mode)'
         Write-Host '  7  Apply specific items    (enter IDs, e.g. 15,23)'
         Write-Host '  8  GPU driver pin          [19]'
         Write-Host '  9  List all items'
