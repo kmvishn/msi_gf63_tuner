@@ -89,6 +89,21 @@ if (Test-Path $profSrc) {
     Write-Host "  [OK] Installed 5-profile suite (Balanced, Performance, Sustained 35W, Silent, Super Battery)" -ForegroundColor Green
 }
 
+# Ensure CommonConfig.xml is set to WMI2 (driverless)
+$commonCfgDst = Join-Path $profDir "CommonConfig.xml"
+$commonXml = @"
+<?xml version="1.0" encoding="utf-8"?>
+<CommonConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Ver="1">
+	<LogLevel>Debug</LogLevel>
+	<UseWMI2>true</UseWMI2>
+	<DisableFBOnExit>true</DisableFBOnExit>
+	<AutoUpdateAsked>true</AutoUpdateAsked>
+	<PreRelease>false</PreRelease>
+</CommonConfig>
+"@
+Set-Content -Path $commonCfgDst -Value $commonXml -Encoding UTF8 -Force
+Write-Host "  [OK] Configured driverless WMI2 mode (no WinRing0 needed)" -ForegroundColor Green
+
 # Update Desktop shortcut
 try {
     $desktopPath = [System.Environment]::GetFolderPath('Desktop')

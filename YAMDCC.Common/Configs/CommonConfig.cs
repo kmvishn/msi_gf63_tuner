@@ -63,15 +63,11 @@ public sealed class CommonConfig
     public LogLevel LogLevel { get; set; } = LogLevel.Debug;
 
     /// <summary>
-    /// Should the experimental WMI2 backend be
-    /// used to apply fan settings on "gen-2" ECs?
+    /// Should the WMI2 backend be used to apply fan settings on modern MSI laptops?
+    /// Defaults to true for MSI GF63 (MS-16R7) driverless operation.
     /// </summary>
-    /// <remarks>
-    /// If <see langword="false"/>, the old
-    /// WinRing0-based backend will always be used.
-    /// </remarks>
     [XmlElement]
-    public bool UseWMI2 { get; set; }
+    public bool UseWMI2 { get; set; } = true;
 
     /// <summary>
     /// <see langword="true"/> to disable Full Blast when exiting

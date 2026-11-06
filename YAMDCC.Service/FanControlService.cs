@@ -71,9 +71,19 @@ internal sealed class FanControlService : ServiceBase
         CanShutdown = true;
 
         Log = logger;
-        FC = CommonConfig.GetUseWMI()
-            ? new Wmi2FanController(logger)
-            : new Ring0FanController(logger);
+        // MSI Thin GF63 (MS-16R7) uses the driverless MSI WMI2 ACPI backend.
+        // Default to WMI2; only use Ring0 if explicitly opted in and the driver file exists.
+        string ring0Driver = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
+            Environment.Is64BitOperatingSystem ? "WinRing0x64.sys" : "WinRing0.sys");
+
+        if (CommonConfig.GetUseWMI() || !File.Exists(ring0Driver))
+        {
+            FC = new Wmi2FanController(logger);
+        }
+        else
+        {
+            FC = new Ring0FanController(logger);
+        }
 
         PipeSecurity security = new();
         // use SDDL descriptor since not everyone uses english Windows.
