@@ -145,31 +145,31 @@ function Grant-AdminKeyAccess($subPath) {
     [RegPrivs]::EnablePrivilege("SeTakeOwnershipPrivilege") | Out-Null
     [RegPrivs]::EnablePrivilege("SeRestorePrivilege") | Out-Null
 
-    $key = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
-        $subPath,
-        [Microsoft.Win32.RegistryKeyPermissionCheck]::ReadWriteSubTree,
-        [System.Security.AccessControl.RegistryRights]::TakeOwnership
-    )
-    if ($key) {
-        $acl = $key.GetAccessControl([System.Security.AccessControl.AccessControlSections]::None)
-        $admin = New-Object System.Security.Principal.NTAccount("Administrators")
-        $acl.SetOwner($admin)
-        $key.SetAccessControl($acl)
-        $key.Close()
-
+    try {
         $key = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
             $subPath,
-            [Microsoft.Win32.RegistryKeyPermissionCheck]::ReadWriteSubTree,
-            [System.Security.AccessControl.RegistryRights]::ChangePermissions
+            [System.Security.AccessControl.RegistryRights]::TakeOwnership
         )
         if ($key) {
-            $acl = $key.GetAccessControl()
-            $rule = New-Object System.Security.AccessControl.RegistryAccessRule($admin, "FullControl", "Allow")
-            $acl.SetAccessRule($rule)
+            $acl = $key.GetAccessControl([System.Security.AccessControl.AccessControlSections]::None)
+            $admin = New-Object System.Security.Principal.NTAccount("Administrators")
+            $acl.SetOwner($admin)
             $key.SetAccessControl($acl)
             $key.Close()
+
+            $key = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
+                $subPath,
+                [System.Security.AccessControl.RegistryRights]::ChangePermissions
+            )
+            if ($key) {
+                $acl = $key.GetAccessControl()
+                $rule = New-Object System.Security.AccessControl.RegistryAccessRule($admin, "FullControl", "Allow")
+                $acl.SetAccessRule($rule)
+                $key.SetAccessControl($acl)
+                $key.Close()
+            }
         }
-    }
+    } catch { }
 }
 
 # =============================================================================
@@ -682,12 +682,8 @@ Add-Item 36 gaming 'GameBarPresenceWriter background hook off' {
     $v = RegVal $PresenceKey ActivationType
     Res ($v -eq 0 -and $null -ne $v) $v
 } {
-    try {
-        Set-Dword $PresenceKey ActivationType 0
-    } catch {
-        Grant-AdminKeyAccess $PresenceSub
-        Set-Dword $PresenceKey ActivationType 0
-    }
+    Grant-AdminKeyAccess $PresenceSub
+    Set-Dword $PresenceKey ActivationType 0
 }
 
 # [37] TCP gaming latency: Immediate ACK & TCPNoDelay on physical adapters.
