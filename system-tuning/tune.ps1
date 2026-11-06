@@ -459,7 +459,7 @@ Add-Item 35 advanced 'Windows Update no auto-reboot while logged on' {
 Add-Item 38 advanced 'Defender background scan throttle (25% CPU, low priority)' {
     $mp = Get-MpPreference -EA 0
     if (-not $mp) { return SkipRes 'Defender not available' }
-    Res ($mp.ScanAvgCPULoadFactor -eq 25 -and [bool]$mp.LowCpuPriority) "CPU=$($mp.ScanAvgCPULoadFactor)% LowPriority=$([bool]$mp.LowCpuPriority)"
+    Res ($mp.ScanAvgCPULoadFactor -eq 25 -and [bool]$mp.EnableLowCpuPriority) "CPU=$($mp.ScanAvgCPULoadFactor)% LowPriority=$([bool]$mp.EnableLowCpuPriority)"
 } {
     Set-MpPreference -ScanAvgCPULoadFactor 25 -EnableLowCpuPriority $true
 }
