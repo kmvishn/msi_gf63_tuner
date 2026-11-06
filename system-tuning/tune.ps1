@@ -555,9 +555,10 @@ Add-Item 28 gaming 'Fortnite on high-performance GPU (Arc) (HKCU)' {
 #       WHY: prevents desktop & utility apps from waking or allocating VRAM on the Arc dGPU.
 #       REVERT: Remove-ItemProperty HKCU:\Software\Microsoft\DirectX\UserGpuPreferences -Name '<exe path>'
 $iGpuApps = @(
-    'C:\Users\vishnu\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe',
-    'C:\Program Files\kmvishn\msi_gf63_tuner\ConfigEditor.exe'
+    "$env:LOCALAPPDATA\Programs\Antigravity IDE\Antigravity IDE.exe"
 )
+$cfgEditor = (Get-ChildItem -Path "$env:ProgramFiles" -Filter 'ConfigEditor.exe' -Recurse -EA 0 | Select-Object -First 1).FullName
+if ($cfgEditor) { $iGpuApps += $cfgEditor }
 Add-Item '28b' gaming 'Dev & utility apps on power-saving GPU (Iris Xe) (HKCU)' {
     $present = @($iGpuApps | Where-Object { Test-Path $_ })
     if (-not $present.Count) { return SkipRes 'none present' }
