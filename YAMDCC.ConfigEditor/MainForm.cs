@@ -1274,10 +1274,10 @@ internal sealed partial class MainForm : Form
         {
             Label h = new()
             {
-                Text = text,
+                Text = $"//  {text.ToUpperInvariant()}",
                 AutoSize = true,
-                Margin = new Padding(0, row == 0 ? 0 : 10, 0, 4),
-                Font = new Font(Font, FontStyle.Bold),
+                Margin = new Padding(0, row == 0 ? 0 : 12, 0, 4),
+                Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
                 ForeColor = Theme.Accent,
             };
             t.Controls.Add(h, 0, row);
@@ -1292,10 +1292,13 @@ internal sealed partial class MainForm : Form
                 Text = caption,
                 AutoSize = true,
                 Margin = new Padding(12, 2, 8, 2),
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
                 ForeColor = Theme.TextMuted,
             };
             value ??= new Label { Text = "--", AutoSize = true };
             value.Margin = new Padding(0, 2, 0, 2);
+            value.Font = new Font("Consolas", 9.5F, FontStyle.Bold);
+            value.ForeColor = Theme.Text;
             t.Controls.Add(c, 0, row);
             t.Controls.Add(value, 1, row);
             row++;
@@ -1599,6 +1602,7 @@ internal sealed partial class MainForm : Form
             TabIndex = tabIdx,
             Text = text,
             TextAlign = align,
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
         };
         // created after Theme.Apply() ran, so theme it here
         Theme.ApplyTo(lbl);
@@ -1732,6 +1736,13 @@ internal sealed partial class MainForm : Form
             AppStatus.Code = status;
             AppStatus.Repeats = 0;
         }
+
+        lblStatus.ForeColor = AppStatus.Code switch
+        {
+            StatusCode.ServiceCommandFail or StatusCode.ServiceTimeout => Theme.Accent,
+            StatusCode.ConfApplied or StatusCode.FullBlastToggled => Theme.AccentHover,
+            _ => Theme.TextMuted,
+        };
 
         // set status text
         bool persist = false;

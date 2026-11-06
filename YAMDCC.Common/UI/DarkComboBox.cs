@@ -33,6 +33,7 @@ public sealed class DarkComboBox : ComboBox
 {
     private const int WM_PAINT = 0x000F;
     private const int ButtonWidth = 17;
+    private bool _hovered;
 
     public DarkComboBox()
     {
@@ -40,6 +41,28 @@ public sealed class DarkComboBox : ComboBox
         BackColor = Theme.SurfaceAlt;
         ForeColor = Theme.Text;
         DrawMode = DrawMode.OwnerDrawFixed;
+    }
+
+    protected override void OnMouseEnter(System.EventArgs e)
+    {
+        base.OnMouseEnter(e);
+        if (Enabled)
+        {
+            _hovered = true;
+            Cursor = Cursors.Hand;
+            Invalidate();
+        }
+    }
+
+    protected override void OnMouseLeave(System.EventArgs e)
+    {
+        base.OnMouseLeave(e);
+        if (_hovered)
+        {
+            _hovered = false;
+            Cursor = Cursors.Default;
+            Invalidate();
+        }
     }
 
     /// <summary>
@@ -63,8 +86,9 @@ public sealed class DarkComboBox : ComboBox
             return;
         }
 
+        using Font f = selected ? new Font(e.Font, FontStyle.Bold) : new Font(e.Font, FontStyle.Regular);
         TextRenderer.DrawText(
-            e.Graphics, GetItemText(Items[e.Index]), e.Font, e.Bounds,
+            e.Graphics, GetItemText(Items[e.Index]), f, e.Bounds,
             selected ? Color.White : (Enabled ? Theme.Text : Theme.TextDisabled),
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter |
             TextFormatFlags.NoPrefix);
@@ -99,7 +123,8 @@ public sealed class DarkComboBox : ComboBox
             new(cx + 4, cy - 2),
             new(cx, cy + 3),
         ];
-        using (SolidBrush b = new(Enabled ? Theme.Text : Theme.TextDisabled))
+        bool active = Focused || DroppedDown || _hovered;
+        using (SolidBrush b = new(Enabled ? (active ? Theme.Accent : Theme.Text) : Theme.TextDisabled))
         {
             g.FillPolygon(b, arrow);
         }
@@ -107,7 +132,7 @@ public sealed class DarkComboBox : ComboBox
         // A flat border in the theme colour, instead of the 3D one.
         // Two rectangles: the control also paints a 1px white edge one pixel
         // *inside* its bounds, so covering only inset 0 left a white outline.
-        using Pen p = new(Focused ? Theme.Accent : Theme.Border);
+        using Pen p = new(active ? Theme.Accent : Theme.Border);
         g.DrawRectangle(p, 0, 0, Width - 1, Height - 1);
         g.DrawRectangle(p, 1, 1, Width - 3, Height - 3);
     }

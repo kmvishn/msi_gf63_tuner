@@ -32,38 +32,44 @@ namespace YAMDCC.Common.UI;
 public static class Theme
 {
     #region Palette
-    /// <summary>Form background. Deep near-black rather than pure black, so borders stay visible.</summary>
-    public static readonly Color Background = Color.FromArgb(0x14, 0x14, 0x14);
+    /// <summary>Form background. Deep obsidian carbon black matching the MSI chassis.</summary>
+    public static readonly Color Background = Color.FromArgb(0x0C, 0x0C, 0x0F);
 
     /// <summary>Panels, tab pages and other raised areas.</summary>
-    public static readonly Color Surface = Color.FromArgb(0x1E, 0x1E, 0x1E);
+    public static readonly Color Surface = Color.FromArgb(0x15, 0x15, 0x1B);
 
     /// <summary>Text boxes, combo boxes and other input fields.</summary>
-    public static readonly Color SurfaceAlt = Color.FromArgb(0x26, 0x26, 0x26);
+    public static readonly Color SurfaceAlt = Color.FromArgb(0x1C, 0x1C, 0x24);
 
-    /// <summary>Hovered menu/​list rows.</summary>
-    public static readonly Color SurfaceHover = Color.FromArgb(0x32, 0x32, 0x32);
+    /// <summary>Hovered menu/list rows and controls.</summary>
+    public static readonly Color SurfaceHover = Color.FromArgb(0x28, 0x1E, 0x24);
 
-    /// <summary>Hairlines and control borders.</summary>
-    public static readonly Color Border = Color.FromArgb(0x3A, 0x3A, 0x3A);
+    /// <summary>Subtle dark crimson borders matching the MSI chassis bevels.</summary>
+    public static readonly Color Border = Color.FromArgb(0x38, 0x18, 0x20);
 
-    /// <summary>Primary text.</summary>
-    public static readonly Color Text = Color.FromArgb(0xED, 0xED, 0xED);
+    /// <summary>Brighter crimson border for active or hovered boundaries.</summary>
+    public static readonly Color BorderBright = Color.FromArgb(0x6A, 0x22, 0x2E);
 
-    /// <summary>Secondary/dimmed text.</summary>
-    public static readonly Color TextMuted = Color.FromArgb(0x9B, 0x9B, 0x9B);
+    /// <summary>Crisp high-contrast ice-white text.</summary>
+    public static readonly Color Text = Color.FromArgb(0xF2, 0xF3, 0xF5);
+
+    /// <summary>Secondary/dimmed text in gunmetal slate.</summary>
+    public static readonly Color TextMuted = Color.FromArgb(0x9E, 0x94, 0x9A);
 
     /// <summary>Text on a disabled control.</summary>
-    public static readonly Color TextDisabled = Color.FromArgb(0x5A, 0x5A, 0x5A);
+    public static readonly Color TextDisabled = Color.FromArgb(0x52, 0x48, 0x4E);
 
-    /// <summary>MSI red. Used for selection, focus and emphasis.</summary>
-    public static readonly Color Accent = Color.FromArgb(0xE4, 0x00, 0x2B);
+    /// <summary>MSI Neon Red. Used for selection, focus, and intense gaming emphasis.</summary>
+    public static readonly Color Accent = Color.FromArgb(0xFF, 0x1A, 0x3C);
 
-    /// <summary>Lighter red for hover states.</summary>
-    public static readonly Color AccentHover = Color.FromArgb(0xFF, 0x2E, 0x4D);
+    /// <summary>Lighter neon red for hover states and luminous glow.</summary>
+    public static readonly Color AccentHover = Color.FromArgb(0xFF, 0x3D, 0x5C);
 
     /// <summary>Darker red for pressed states.</summary>
-    public static readonly Color AccentPressed = Color.FromArgb(0xB3, 0x00, 0x1F);
+    public static readonly Color AccentPressed = Color.FromArgb(0xD1, 0x00, 0x26);
+
+    /// <summary>Subtle dark red for secondary indicators and accents.</summary>
+    public static readonly Color AccentDim = Color.FromArgb(0x8A, 0x12, 0x24);
     #endregion
 
     #region Dark title bar
@@ -231,16 +237,38 @@ public static class Theme
 
             case Button b:
                 b.FlatStyle = FlatStyle.Flat;
-                b.BackColor = SurfaceAlt;
-                b.ForeColor = Text;
                 b.UseVisualStyleBackColor = false;
-                b.FlatAppearance.BorderColor = Border;
                 b.FlatAppearance.BorderSize = 1;
-                b.FlatAppearance.MouseOverBackColor = SurfaceHover;
-                b.FlatAppearance.MouseDownBackColor = AccentPressed;
-                // red edge on keyboard focus, so focus is visible on black
-                b.GotFocus += (s, e) => ((Button)s).FlatAppearance.BorderColor = Accent;
-                b.LostFocus += (s, e) => ((Button)s).FlatAppearance.BorderColor = Border;
+
+                if (b.Name == "btnApply")
+                {
+                    // Primary action button: Bold Neon Red
+                    b.BackColor = Accent;
+                    b.ForeColor = Color.White;
+                    b.Font = new Font(b.Font.FontFamily, b.Font.Size, FontStyle.Bold);
+                    b.FlatAppearance.BorderColor = AccentHover;
+                    b.FlatAppearance.MouseOverBackColor = AccentHover;
+                    b.FlatAppearance.MouseDownBackColor = AccentPressed;
+                    b.Cursor = Cursors.Hand;
+                }
+                else
+                {
+                    b.BackColor = SurfaceAlt;
+                    b.ForeColor = Text;
+                    b.FlatAppearance.BorderColor = Border;
+                    b.FlatAppearance.MouseOverBackColor = SurfaceHover;
+                    b.FlatAppearance.MouseDownBackColor = AccentPressed;
+                    b.Cursor = Cursors.Hand;
+
+                    b.MouseEnter += (s, e) => ((Button)s).FlatAppearance.BorderColor = Accent;
+                    b.MouseLeave += (s, e) =>
+                    {
+                        Button btn = (Button)s;
+                        if (!btn.Focused) { btn.FlatAppearance.BorderColor = Border; }
+                    };
+                    b.GotFocus += (s, e) => ((Button)s).FlatAppearance.BorderColor = Accent;
+                    b.LostFocus += (s, e) => ((Button)s).FlatAppearance.BorderColor = Border;
+                }
                 break;
 
             case TextBox tb:
@@ -274,6 +302,19 @@ public static class Theme
                 SetTransparentBack(cbx);
                 cbx.FlatAppearance.BorderColor = Border;
                 cbx.FlatAppearance.CheckedBackColor = Accent;
+                cbx.Cursor = Cursors.Hand;
+
+                if (cbx.Name == "chkFullBlast")
+                {
+                    cbx.Font = new Font(cbx.Font.FontFamily, cbx.Font.Size, FontStyle.Bold);
+                    void UpdateFbColor(object sender, EventArgs e)
+                    {
+                        CheckBox fb = (CheckBox)sender;
+                        fb.ForeColor = fb.Checked ? Accent : Text;
+                    }
+                    cbx.CheckedChanged += UpdateFbColor;
+                    UpdateFbColor(cbx, EventArgs.Empty);
+                }
                 break;
 
             case RadioButton rb:
@@ -281,6 +322,7 @@ public static class Theme
                 rb.ForeColor = Text;
                 SetTransparentBack(rb);
                 rb.FlatAppearance.CheckedBackColor = Accent;
+                rb.Cursor = Cursors.Hand;
                 break;
 
             // LinkLabel derives from Label, so it must be matched first or
@@ -337,7 +379,7 @@ public static class Theme
 
             case GroupBox gb:
                 SetTransparentBack(gb);
-                gb.ForeColor = TextMuted;
+                gb.ForeColor = Accent;
                 break;
 
             default:
@@ -458,8 +500,9 @@ public static class Theme
             e.Graphics.FillRectangle(accent, r.Left, r.Bottom - 3, r.Width, 3);
         }
 
+        using Font f = selected ? new Font(tc.Font, FontStyle.Bold) : new Font(tc.Font, FontStyle.Regular);
         TextRenderer.DrawText(
-            e.Graphics, page.Text, tc.Font, r,
+            e.Graphics, page.Text, f, r,
             selected ? Text : TextMuted,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
             TextFormatFlags.EndEllipsis);

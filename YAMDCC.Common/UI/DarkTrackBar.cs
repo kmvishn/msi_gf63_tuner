@@ -51,6 +51,7 @@ public sealed class DarkTrackBar : Control, ISupportInitialize
     private Orientation _orientation = Orientation.Horizontal;
     private TickStyle _tickStyle = TickStyle.BottomRight;
     private bool _dragging;
+    private bool _hovered;
 
     /// <summary>Raised when <see cref="Value"/> changes for any reason.</summary>
     public event EventHandler ValueChanged;
@@ -227,15 +228,31 @@ public sealed class DarkTrackBar : Control, ISupportInitialize
 
         DrawTicks(g, track, on);
 
-        // thumb
-        using (SolidBrush b = new(on ? Theme.Text : Theme.TextDisabled))
+        // thumb body
+        using (SolidBrush b = new(on ? Theme.SurfaceAlt : Theme.Background))
         {
             g.FillRectangle(b, thumb);
         }
-        if (on && (_dragging || Focused))
+
+        // thumb border
+        bool highlight = on && (_dragging || Focused || _hovered);
+        using (Pen p = new(highlight ? Theme.Accent : (on ? Theme.BorderBright : Theme.Border), highlight ? 1.5f : 1f))
         {
-            using Pen p = new(Theme.AccentHover, 2);
             g.DrawRectangle(p, thumb.X, thumb.Y, thumb.Width - 1, thumb.Height - 1);
+        }
+
+        // center precision indicator line on thumb
+        if (Vertical)
+        {
+            int cy = thumb.Top + (thumb.Height / 2);
+            using Pen pGrip = new(on ? (highlight ? Theme.AccentHover : Theme.Accent) : Theme.TextDisabled, 2f);
+            g.DrawLine(pGrip, thumb.Left + 2, cy, thumb.Right - 3, cy);
+        }
+        else
+        {
+            int cx = thumb.Left + (thumb.Width / 2);
+            using Pen pGrip = new(on ? (highlight ? Theme.AccentHover : Theme.Accent) : Theme.TextDisabled, 2f);
+            g.DrawLine(pGrip, cx, thumb.Top + 2, cx, thumb.Bottom - 3);
         }
     }
 
@@ -351,6 +368,28 @@ public sealed class DarkTrackBar : Control, ISupportInitialize
         if (_value != old)
         {
             Scroll?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    protected override void OnMouseEnter(EventArgs e)
+    {
+        base.OnMouseEnter(e);
+        if (Enabled)
+        {
+            _hovered = true;
+            Cursor = Cursors.Hand;
+            Invalidate();
+        }
+    }
+
+    protected override void OnMouseLeave(EventArgs e)
+    {
+        base.OnMouseLeave(e);
+        if (_hovered)
+        {
+            _hovered = false;
+            Cursor = Cursors.Default;
+            Invalidate();
         }
     }
 

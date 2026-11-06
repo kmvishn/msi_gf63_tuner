@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License along with
 // YAMDCC. If not, see <https://www.gnu.org/licenses/>.
 
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -31,6 +32,8 @@ namespace YAMDCC.Common.UI;
 /// </remarks>
 public sealed class DarkTabControl : TabControl
 {
+    private int _hoveredIndex = -1;
+
     public DarkTabControl()
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint |
@@ -43,6 +46,37 @@ public sealed class DarkTabControl : TabControl
         Appearance = TabAppearance.FlatButtons;
         BackColor = Theme.Background;
         ForeColor = Theme.Text;
+    }
+
+    protected override void OnMouseMove(MouseEventArgs e)
+    {
+        base.OnMouseMove(e);
+        int newHover = -1;
+        for (int i = 0; i < TabCount; i++)
+        {
+            if (GetTabRect(i).Contains(e.Location))
+            {
+                newHover = i;
+                break;
+            }
+        }
+        if (newHover != _hoveredIndex)
+        {
+            _hoveredIndex = newHover;
+            Cursor = _hoveredIndex >= 0 ? Cursors.Hand : Cursors.Default;
+            Invalidate();
+        }
+    }
+
+    protected override void OnMouseLeave(EventArgs e)
+    {
+        base.OnMouseLeave(e);
+        if (_hoveredIndex != -1)
+        {
+            _hoveredIndex = -1;
+            Cursor = Cursors.Default;
+            Invalidate();
+        }
     }
 
     protected override void OnPaintBackground(PaintEventArgs e)
@@ -62,26 +96,42 @@ public sealed class DarkTabControl : TabControl
             g.FillRectangle(b, display);
         }
 
+        // Draw top border line separating the tab strip from the page area
+        using (Pen pBorder = new(Theme.Border))
+        {
+            g.DrawLine(pBorder, display.Left, display.Top, display.Right, display.Top);
+        }
+
         for (int i = 0; i < TabCount; i++)
         {
             Rectangle r = GetTabRect(i);
             bool selected = SelectedIndex == i;
+            bool hovered = _hoveredIndex == i;
 
-            using (SolidBrush b = new(selected ? Theme.Surface : Theme.Background))
+            Color tabBg = selected ? Theme.Surface : (hovered ? Theme.SurfaceHover : Theme.Background);
+            using (SolidBrush b = new(tabBg))
             {
                 g.FillRectangle(b, r);
             }
 
-            // MSI red underline marks the active tab
+            // MSI Neon Red underline marks the active tab; subtle crimson for hovered
             if (selected)
             {
                 using SolidBrush accent = new(Theme.Accent);
                 g.FillRectangle(accent, r.Left, r.Bottom - 3, r.Width, 3);
             }
+            else if (hovered)
+            {
+                using SolidBrush glow = new(Theme.AccentDim);
+                g.FillRectangle(glow, r.Left, r.Bottom - 2, r.Width, 2);
+            }
+
+            Color textColor = selected ? Theme.Text : (hovered ? Theme.Text : Theme.TextMuted);
+            using Font f = selected ? new Font(Font, FontStyle.Bold) : new Font(Font, FontStyle.Regular);
 
             TextRenderer.DrawText(
-                g, TabPages[i].Text, Font, r,
-                selected ? Theme.Text : Theme.TextMuted,
+                g, TabPages[i].Text, f, r,
+                textColor,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter |
                 TextFormatFlags.EndEllipsis);
         }

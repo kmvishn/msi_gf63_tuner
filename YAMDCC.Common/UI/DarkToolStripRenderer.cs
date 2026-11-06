@@ -40,18 +40,18 @@ internal sealed class DarkColorTable : ProfessionalColorTable
     public override Color ToolStripPanelGradientBegin => Theme.Surface;
     public override Color ToolStripPanelGradientEnd => Theme.Surface;
 
-    public override Color MenuStripGradientBegin => Theme.Surface;
-    public override Color MenuStripGradientEnd => Theme.Surface;
+    public override Color MenuStripGradientBegin => Theme.Background;
+    public override Color MenuStripGradientEnd => Theme.Background;
     public override Color MenuBorder => Theme.Border;
     public override Color MenuItemBorder => Theme.Accent;
 
-    // hovered / open menu items: MSI red
+    // hovered / open menu items: MSI neon red
     public override Color MenuItemSelected => Theme.Accent;
     public override Color MenuItemSelectedGradientBegin => Theme.Accent;
     public override Color MenuItemSelectedGradientEnd => Theme.Accent;
-    public override Color MenuItemPressedGradientBegin => Theme.Surface;
-    public override Color MenuItemPressedGradientMiddle => Theme.Surface;
-    public override Color MenuItemPressedGradientEnd => Theme.Surface;
+    public override Color MenuItemPressedGradientBegin => Theme.SurfaceHover;
+    public override Color MenuItemPressedGradientMiddle => Theme.SurfaceHover;
+    public override Color MenuItemPressedGradientEnd => Theme.SurfaceHover;
 
     // the gutter down the left of a drop-down that holds check marks/icons
     public override Color ImageMarginGradientBegin => Theme.Surface;
@@ -103,6 +103,32 @@ public sealed class DarkToolStripRenderer : ToolStripProfessionalRenderer
             : Theme.TextDisabled;
 
         base.OnRenderArrow(e);
+    }
+
+    protected override void OnRenderItemCheck(ToolStripItemImageRenderEventArgs e)
+    {
+        Rectangle r = e.ImageRectangle;
+        r.Inflate(-1, -1);
+        using (SolidBrush b = new(Theme.Accent))
+        {
+            e.Graphics.FillRectangle(b, r);
+        }
+        using (Pen p = new(Theme.AccentHover))
+        {
+            e.Graphics.DrawRectangle(p, r.X, r.Y, r.Width - 1, r.Height - 1);
+        }
+
+        Point[] check =
+        [
+            new(r.Left + 3, r.Top + (r.Height / 2)),
+            new(r.Left + (r.Width / 2) - 1, r.Bottom - 4),
+            new(r.Right - 3, r.Top + 4),
+        ];
+        e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        using (Pen p = new(Color.White, 2f))
+        {
+            e.Graphics.DrawLines(p, check);
+        }
     }
 
     protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
