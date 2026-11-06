@@ -5,7 +5,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     exit
 }
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 $target = "C:\Program Files\kmvishn\msi_gf63_tuner"
 
 if (Test-Path "$PSScriptRoot\YAMDCC.ConfigEditor") {
@@ -16,6 +16,15 @@ if (Test-Path "$PSScriptRoot\YAMDCC.ConfigEditor") {
     $sourceBase = $PSScriptRoot
 }
 
+function Safe-KillProcess([string]$exeName) {
+    $baseName = [System.IO.Path]::GetFileNameWithoutExtension($exeName)
+    $procs = Get-Process -Name $baseName -ErrorAction SilentlyContinue
+    if ($procs) {
+        $procs | Stop-Process -Force -ErrorAction SilentlyContinue
+        cmd.exe /c "taskkill.exe /F /IM $exeName /T >nul 2>&1"
+    }
+}
+
 Write-Host "==========================================================" -ForegroundColor Red
 Write-Host "  MSI GF63 TUNER - SINGLE-BINARY DEPLOYMENT DECK" -ForegroundColor Cyan
 Write-Host "  Target: $target" -ForegroundColor DarkGray
@@ -23,12 +32,11 @@ Write-Host "==========================================================" -Foregro
 
 # 1. Stop any running instances
 Write-Host "[1/7] Stopping any running tuner instances..." -ForegroundColor Cyan
-& taskkill.exe /F /IM msi_gf63_tuner.exe /T 2>$null | Out-Null
-& taskkill.exe /F /IM ConfigEditor.exe /T 2>$null | Out-Null
-& taskkill.exe /F /IM HotkeyHandler.exe /T 2>$null | Out-Null
-& taskkill.exe /F /IM yamdccsvc.exe /T 2>$null | Out-Null
-& taskkill.exe /F /IM yamdcc.exe /T 2>$null | Out-Null
-Get-Process -Name msi_gf63_tuner, ConfigEditor, HotkeyHandler, yamdcc, yamdccsvc -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Safe-KillProcess "msi_gf63_tuner.exe"
+Safe-KillProcess "ConfigEditor.exe"
+Safe-KillProcess "HotkeyHandler.exe"
+Safe-KillProcess "yamdccsvc.exe"
+Safe-KillProcess "yamdcc.exe"
 
 # Verify file lock is released
 $targetExe = Join-Path $target "msi_gf63_tuner.exe"
@@ -41,7 +49,7 @@ if (Test-Path $targetExe) {
             break
         } catch {
             Write-Host "  [WAIT] File handle locked, terminating lingering processes (attempt $attempt/10)..." -ForegroundColor Yellow
-            & taskkill.exe /F /IM msi_gf63_tuner.exe /T 2>$null | Out-Null
+            Safe-KillProcess "msi_gf63_tuner.exe"
             Start-Sleep -Milliseconds 500
         }
     }
@@ -53,7 +61,7 @@ $svc = Get-Service -Name yamdccsvc -ErrorAction SilentlyContinue
 if ($svc) {
     Write-Host "[2/7] Removing legacy yamdccsvc Windows service (now embedded)..." -ForegroundColor Yellow
     Stop-Service yamdccsvc -Force -ErrorAction SilentlyContinue
-    & sc.exe delete yamdccsvc | Out-Null
+    cmd.exe /c "sc.exe delete yamdccsvc >nul 2>&1"
     Write-Host "  [OK] Service removed." -ForegroundColor Green
 } else {
     Write-Host "[2/7] Legacy Windows service check: Clean (none present)." -ForegroundColor DarkGray
@@ -110,7 +118,7 @@ for ($attempt = 1; $attempt -le 5; $attempt++) {
         break
     } catch {
         Write-Host "  [WAIT] Retrying binary install ($attempt/5)..." -ForegroundColor Yellow
-        & taskkill.exe /F /IM msi_gf63_tuner.exe /T 2>$null | Out-Null
+        Safe-KillProcess "msi_gf63_tuner.exe"
         Start-Sleep -Milliseconds 600
     }
 }
