@@ -227,3 +227,7 @@ AppPackages/
 
 # Inno Setup Compiler output path
 [Oo]utput/
+
+# Standalone release packages
+MSI-GF63-Tuner-*.zip
+release_pkg/

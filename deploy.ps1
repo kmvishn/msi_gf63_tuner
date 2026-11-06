@@ -17,7 +17,29 @@ if (Test-Path "$PSScriptRoot\YAMDCC.ConfigEditor") {
 Write-Host "=== Deploying Standalone MSI GF63 Tuner (Single Binary) ===" -ForegroundColor Red
 
 Write-Host "Stopping any running tuner instances..." -ForegroundColor Cyan
+& taskkill.exe /F /IM msi_gf63_tuner.exe /T 2>$null | Out-Null
+& taskkill.exe /F /IM ConfigEditor.exe /T 2>$null | Out-Null
+& taskkill.exe /F /IM HotkeyHandler.exe /T 2>$null | Out-Null
+& taskkill.exe /F /IM yamdccsvc.exe /T 2>$null | Out-Null
+& taskkill.exe /F /IM yamdcc.exe /T 2>$null | Out-Null
 Stop-Process -Name msi_gf63_tuner, ConfigEditor, HotkeyHandler, yamdcc, yamdccsvc -Force -ErrorAction SilentlyContinue
+
+# Ensure file lock on msi_gf63_tuner.exe is completely released
+$targetExe = Join-Path $target "msi_gf63_tuner.exe"
+if (Test-Path $targetExe) {
+    for ($attempt = 1; $attempt -le 10; $attempt++) {
+        try {
+            $stream = [System.IO.File]::Open($targetExe, [System.IO.FileMode]::Open, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+            $stream.Close()
+            $stream.Dispose()
+            break
+        } catch {
+            Write-Host "  [WAIT] File is locked by active process, retrying termination (attempt $attempt)..." -ForegroundColor Yellow
+            & taskkill.exe /F /IM msi_gf63_tuner.exe /T 2>$null | Out-Null
+            Start-Sleep -Milliseconds 600
+        }
+    }
+}
 
 # If the legacy yamdccsvc Windows service exists, stop and uninstall it
 $svc = Get-Service -Name yamdccsvc -ErrorAction SilentlyContinue
