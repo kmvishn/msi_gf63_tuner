@@ -451,6 +451,19 @@ Add-Item 35 advanced 'Windows Update no auto-reboot while logged on' {
     Res ($v -eq 1) $v
 } { Set-Dword 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU' NoAutoRebootWithLoggedOnUsers 1 }
 
+# [38] Windows Defender background scan CPU throttle & low thread priority.
+#      WHY: stops MsMpEng.exe background scans from consuming up to 50% CPU during
+#           active coding, compiling (Gradle/WSL), or gaming (Fortnite).
+#           Caps scan CPU load to 25% and runs scan threads at Low Priority.
+#      REVERT: Set-MpPreference -ScanAvgCPULoadFactor 50 -LowCpuPriority $false
+Add-Item 38 advanced 'Defender background scan throttle (25% CPU, low priority)' {
+    $mp = Get-MpPreference -EA 0
+    if (-not $mp) { return SkipRes 'Defender not available' }
+    Res ($mp.ScanAvgCPULoadFactor -eq 25 -and [bool]$mp.LowCpuPriority) "CPU=$($mp.ScanAvgCPULoadFactor)% LowPriority=$([bool]$mp.LowCpuPriority)"
+} {
+    Set-MpPreference -ScanAvgCPULoadFactor 25 -LowCpuPriority $true
+}
+
 # ------------------------------------------- idle-RAM debloat [20]-[27] (S8)
 # ---- Section 8: idle-RAM / background debloat (2026-10-10) ----------------
 # Found during an idle-RAM audit. Each is small; together ~100-300 MB plus
@@ -831,7 +844,7 @@ function Show-Menu {
         Write-Host '  2  Apply EVERYTHING that drifted'
         Write-Host '  3  Apply core fixes        [1]-[9]'
         Write-Host '  4  Apply baseline          NTFS, visual FX, services'
-        Write-Host '  5  Apply advanced          [10]-[18],[34],[35]'
+        Write-Host '  5  Apply advanced          [10]-[18],[34],[35],[38]'
         Write-Host '  6  Apply idle-RAM debloat  [20]-[27],[32]'
         Write-Host '  G  Apply gaming            [28],[28b],[29],[33],[36],[37]  (Fortnite, iGPU binding, Latency, Game Mode)'
         Write-Host '  7  Apply specific items    (enter IDs, e.g. 15,23)'

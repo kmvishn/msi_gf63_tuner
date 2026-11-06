@@ -18,7 +18,7 @@ performance and debloat tweaks for an MSI Thin GF63 12HW
 - [What gets tuned](#what-gets-tuned)
   - [Core fixes `[1]`–`[9]`](#core-fixes-19)
   - [Baseline `[4.x]`](#baseline-4x)
-  - [Advanced `[10]`–`[18]`, `[34]`, `[35]`](#advanced-1018-34-35)
+  - [Advanced `[10]`–`[18]`, `[34]`, `[35]`, `[38]`](#advanced-1018-34-35-38)
   - [GPU driver pin `[19]`](#gpu-driver-pin-19)
   - [Idle-RAM debloat `[20]`–`[27]`, `[32]`](#idle-ram-debloat-2027-32)
   - [Gaming `[28]`–`[29]`, `[33]`, `[36]`, `[37]`](#gaming-2829-33-36-37)
@@ -145,7 +145,7 @@ Tuning that predates this project, kept enforced:
   link, vendor updaters, and similar. Services that aren't installed are
   skipped, not counted as drift. Side effects are listed in log Section 4.6.
 
-### Advanced `[10]`–`[18]`, `[34]`, `[35]`
+### Advanced `[10]`–`[18]`, `[34]`, `[35]`, `[38]`
 
 | # | Setting | Why |
 |---|---|---|
@@ -160,6 +160,7 @@ Tuning that predates this project, kept enforced:
 | 18 | WSL2 `autoMemoryReclaim=gradual`, `sparseVhd=true` | **Check only.** Edit `%USERPROFILE%\.wslconfig` by hand, then `wsl --shutdown`. |
 | 34 | Wi-Fi roaming aggressiveness = Lowest | Stops the AX201 from background-scanning for other BSSIDs when signal fluctuates, preventing ping spikes. |
 | 35 | Windows Update: no auto-reboot with logged-on users | Stops Windows from force-restarting the laptop overnight or during gaming/compiling tasks while a user is logged on. |
+| 38 | Defender background scan throttle (25%, low priority) | Caps Defender background scan CPU load to 25% and runs scan threads at Low Priority to prevent CPU spikes in games/compiles. |
 
 ### GPU driver pin `[19]`
 

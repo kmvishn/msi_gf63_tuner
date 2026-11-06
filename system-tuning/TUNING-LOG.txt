@@ -1035,6 +1035,19 @@
               Remove-ItemProperty $k -Name TcpAckFrequency, TCPNoDelay -EA 0
           }
 
+-------------------------------------------------------------------------------
+ [38] DEFENDER BACKGROUND SCAN THROTTLE (25% CPU, LOW PRIORITY) ADDED 2026-11-06
+-------------------------------------------------------------------------------
+ WHY      By default, Windows Defender (MsMpEng.exe) can consume up to 50% CPU
+          during background and scheduled scans. If a scan initiates during active
+          development (Gradle/WSL compiles) or gaming (Fortnite), it can induce
+          sudden frame drops and CPU thermal throttling. Setting
+          ScanAvgCPULoadFactor = 25 and LowCpuPriority = $true limits background
+          scans to 25% CPU maximum and assigns scan threads idle/low priority so
+          foreground tasks are never impeded. Real-time protection stays intact.
+ AFTER    Set-MpPreference -ScanAvgCPULoadFactor 25 -LowCpuPriority $true
+ REVERT   Set-MpPreference -ScanAvgCPULoadFactor 50 -LowCpuPriority $false
+
 ===============================================================================
  END OF LOG
 ===============================================================================
