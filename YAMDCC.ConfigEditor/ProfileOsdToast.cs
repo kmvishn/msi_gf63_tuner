@@ -333,3 +333,4 @@ internal sealed class ProfileOsdToast : Form
         return path;
     }
 }
+
