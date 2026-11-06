@@ -455,13 +455,13 @@ Add-Item 35 advanced 'Windows Update no auto-reboot while logged on' {
 #      WHY: stops MsMpEng.exe background scans from consuming up to 50% CPU during
 #           active coding, compiling (Gradle/WSL), or gaming (Fortnite).
 #           Caps scan CPU load to 25% and runs scan threads at Low Priority.
-#      REVERT: Set-MpPreference -ScanAvgCPULoadFactor 50 -LowCpuPriority $false
+#      REVERT: Set-MpPreference -ScanAvgCPULoadFactor 50 -EnableLowCpuPriority $false
 Add-Item 38 advanced 'Defender background scan throttle (25% CPU, low priority)' {
     $mp = Get-MpPreference -EA 0
     if (-not $mp) { return SkipRes 'Defender not available' }
     Res ($mp.ScanAvgCPULoadFactor -eq 25 -and [bool]$mp.LowCpuPriority) "CPU=$($mp.ScanAvgCPULoadFactor)% LowPriority=$([bool]$mp.LowCpuPriority)"
 } {
-    Set-MpPreference -ScanAvgCPULoadFactor 25 -LowCpuPriority $true
+    Set-MpPreference -ScanAvgCPULoadFactor 25 -EnableLowCpuPriority $true
 }
 
 # ------------------------------------------- idle-RAM debloat [20]-[27] (S8)

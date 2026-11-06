@@ -1045,8 +1045,8 @@
           ScanAvgCPULoadFactor = 25 and LowCpuPriority = $true limits background
           scans to 25% CPU maximum and assigns scan threads idle/low priority so
           foreground tasks are never impeded. Real-time protection stays intact.
- AFTER    Set-MpPreference -ScanAvgCPULoadFactor 25 -LowCpuPriority $true
- REVERT   Set-MpPreference -ScanAvgCPULoadFactor 50 -LowCpuPriority $false
+ AFTER    Set-MpPreference -ScanAvgCPULoadFactor 25 -EnableLowCpuPriority $true
+ REVERT   Set-MpPreference -ScanAvgCPULoadFactor 50 -EnableLowCpuPriority $false
 
 ===============================================================================
  END OF LOG
