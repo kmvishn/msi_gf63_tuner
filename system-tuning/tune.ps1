@@ -105,6 +105,73 @@ function RealtekEeeProps {
     }
 }
 
+# Physical network adapter interface keys in TCP/IP Parameters
+function TcpPhysicalInterfaceKeys {
+    @(Get-NetAdapter -Physical -EA 0 | ForEach-Object {
+        $k = "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\$($_.DeviceID)"
+        if (Test-Path $k) { $k }
+    })
+}
+
+# Helper to take registry ownership when keys are owned by TrustedInstaller
+function Grant-AdminKeyAccess($subPath) {
+    $def = @'
+    using System;
+    using System.Runtime.InteropServices;
+    public class RegPrivs {
+        [DllImport("advapi32.dll", ExactSpelling = true, SetLastError = true)]
+        public static extern bool OpenProcessToken(IntPtr h, int acc, ref IntPtr phtok);
+        [DllImport("advapi32.dll", SetLastError = true)]
+        public static extern bool LookupPrivilegeValue(string host, string name, ref long pluid);
+        [DllImport("advapi32.dll", ExactSpelling = true, SetLastError = true)]
+        public static extern bool AdjustTokenPrivileges(IntPtr htok, bool disall, ref TokPriv1Luid newst, int len, IntPtr prev, IntPtr rele);
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
+        public struct TokPriv1Luid {
+            public int Count;
+            public long Luid;
+            public int Attr;
+        }
+        public static bool EnablePrivilege(string privilege) {
+            IntPtr hproc = System.Diagnostics.Process.GetCurrentProcess().Handle;
+            IntPtr htok = IntPtr.Zero;
+            if (!OpenProcessToken(hproc, 0x0020 | 0x0008, ref htok)) return false;
+            TokPriv1Luid tp = new TokPriv1Luid { Count = 1, Luid = 0, Attr = 0x00000002 };
+            if (!LookupPrivilegeValue(null, privilege, ref tp.Luid)) return false;
+            return AdjustTokenPrivileges(htok, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero);
+        }
+    }
+'@
+    Add-Type -TypeDefinition $def -ErrorAction SilentlyContinue
+    [RegPrivs]::EnablePrivilege("SeTakeOwnershipPrivilege") | Out-Null
+    [RegPrivs]::EnablePrivilege("SeRestorePrivilege") | Out-Null
+
+    $key = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
+        $subPath,
+        [Microsoft.Win32.RegistryKeyPermissionCheck]::ReadWriteSubTree,
+        [System.Security.AccessControl.RegistryRights]::TakeOwnership
+    )
+    if ($key) {
+        $acl = $key.GetAccessControl([System.Security.AccessControl.AccessControlSections]::None)
+        $admin = New-Object System.Security.Principal.NTAccount("Administrators")
+        $acl.SetOwner($admin)
+        $key.SetAccessControl($acl)
+        $key.Close()
+
+        $key = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
+            $subPath,
+            [Microsoft.Win32.RegistryKeyPermissionCheck]::ReadWriteSubTree,
+            [System.Security.AccessControl.RegistryRights]::ChangePermissions
+        )
+        if ($key) {
+            $acl = $key.GetAccessControl()
+            $rule = New-Object System.Security.AccessControl.RegistryAccessRule($admin, "FullControl", "Allow")
+            $acl.SetAccessRule($rule)
+            $key.SetAccessControl($acl)
+            $key.Close()
+        }
+    }
+}
+
 # =============================================================================
 #  Item registry
 #  Id      : TUNING-LOG item number (several entries may share one id)
@@ -434,6 +501,15 @@ Add-Item 34 advanced 'Wi-Fi Roaming Aggressiveness = Lowest' {
     Res ($p.RegistryValue -contains '1' -or $p.DisplayValue -match 'Lowest') $p.DisplayValue
 } { Set-NetAdapterAdvancedProperty -Name WiFi -DisplayName 'Roaming Aggressiveness' -DisplayValue '1. Lowest' -EA Stop } -Wifi
 
+# [35] Windows Update auto-reboot with logged-on users off.
+#      WHY: stops Windows from force-restarting the laptop overnight or in the
+#           middle of active gaming / compiling sessions while a user is logged in.
+#      REVERT: Remove-ItemProperty 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU' -Name NoAutoRebootWithLoggedOnUsers
+Add-Item 35 advanced 'Windows Update no auto-reboot while logged on' {
+    $v = RegVal 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU' NoAutoRebootWithLoggedOnUsers
+    Res ($v -eq 1) $v
+} { Set-Dword 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU' NoAutoRebootWithLoggedOnUsers 1 }
+
 # ------------------------------------------- idle-RAM debloat [20]-[27] (S8)
 # ---- Section 8: idle-RAM / background debloat (2026-10-10) ----------------
 # Found during an idle-RAM audit. Each is small; together ~100-300 MB plus
@@ -594,6 +670,43 @@ Add-Item 33 gaming 'Network throttling off + SystemResponsiveness 0' {
     Set-Dword $k NetworkThrottlingIndex 0xffffffff
     Set-Dword $k SystemResponsiveness 0
 }
+
+# [36] GameBarPresenceWriter background hook disabled.
+#      WHY: stops GameBarPresenceWriter.exe from spawning and injecting into games
+#           when GameDVR is off, eliminating background presence micro-stutters.
+#      REVERT: Set-Dword 'HKLM:\SOFTWARE\Microsoft\WindowsRuntime\ActivatableClassId\Windows.Gaming.GameBar.PresenceServer.Internal.PresenceWriter' ActivationType 1
+$PresenceKey = 'HKLM:\SOFTWARE\Microsoft\WindowsRuntime\ActivatableClassId\Windows.Gaming.GameBar.PresenceServer.Internal.PresenceWriter'
+$PresenceSub = 'SOFTWARE\Microsoft\WindowsRuntime\ActivatableClassId\Windows.Gaming.GameBar.PresenceServer.Internal.PresenceWriter'
+Add-Item 36 gaming 'GameBarPresenceWriter background hook off' {
+    if (-not (Test-Path $PresenceKey)) { return SkipRes 'PresenceWriter key not found' }
+    $v = RegVal $PresenceKey ActivationType
+    Res ($v -eq 0 -and $null -ne $v) $v
+} {
+    try {
+        Set-Dword $PresenceKey ActivationType 0
+    } catch {
+        Grant-AdminKeyAccess $PresenceSub
+        Set-Dword $PresenceKey ActivationType 0
+    }
+}
+
+# [37] TCP gaming latency: Immediate ACK & TCPNoDelay on physical adapters.
+#      WHY: disables Nagle's algorithm and delayed ACKs (up to 200ms delay) on
+#           Wi-Fi and Ethernet adapters, ensuring multiplayer packets are sent immediately.
+#      REVERT: foreach ($k in TcpPhysicalInterfaceKeys) {
+#                  Remove-ItemProperty $k -Name TcpAckFrequency, TCPNoDelay -EA 0
+#              }
+Add-Item 37 gaming 'TCP immediate ACK & NoDelay (physical adapters)' {
+    $keys = @(TcpPhysicalInterfaceKeys)
+    if (-not $keys.Count) { return SkipRes 'no physical network adapters' }
+    $bad = @($keys | Where-Object { (RegVal $_ 'TcpAckFrequency') -ne 1 -or (RegVal $_ 'TCPNoDelay') -ne 1 })
+    Res ($bad.Count -eq 0) $(if ($bad.Count) { "$($bad.Count)/$($keys.Count) unoptimized" } else { "$($keys.Count)/$($keys.Count) optimized" })
+} {
+    foreach ($k in TcpPhysicalInterfaceKeys) {
+        Set-Dword $k TcpAckFrequency 1
+        Set-Dword $k TCPNoDelay 1
+    }
+} -Wifi
 
 # =============================================================================
 #  [19] GPU driver pin vs Windows Update  (separate action -- not part of Apply)
@@ -783,9 +896,9 @@ function Show-Menu {
         Write-Host '  2  Apply EVERYTHING that drifted'
         Write-Host '  3  Apply core fixes        [1]-[9]'
         Write-Host '  4  Apply baseline          NTFS, visual FX, services'
-        Write-Host '  5  Apply advanced          [10]-[18],[34]'
+        Write-Host '  5  Apply advanced          [10]-[18],[34],[35]'
         Write-Host '  6  Apply idle-RAM debloat  [20]-[27],[32]'
-        Write-Host '  G  Apply gaming            [28],[28b],[29],[33]  (Fortnite, iGPU binding, Latency, Game Mode)'
+        Write-Host '  G  Apply gaming            [28],[28b],[29],[33],[36],[37]  (Fortnite, iGPU binding, Latency, Game Mode)'
         Write-Host '  7  Apply specific items    (enter IDs, e.g. 15,23)'
         Write-Host '  8  GPU driver pin          [19]'
         Write-Host '  9  List all items'

@@ -18,10 +18,10 @@ performance and debloat tweaks for an MSI Thin GF63 12HW
 - [What gets tuned](#what-gets-tuned)
   - [Core fixes `[1]`–`[9]`](#core-fixes-19)
   - [Baseline `[4.x]`](#baseline-4x)
-  - [Advanced `[10]`–`[18]`, `[34]`](#advanced-1018-34)
+  - [Advanced `[10]`–`[18]`, `[34]`, `[35]`](#advanced-1018-34-35)
   - [GPU driver pin `[19]`](#gpu-driver-pin-19)
   - [Idle-RAM debloat `[20]`–`[27]`, `[32]`](#idle-ram-debloat-2027-32)
-  - [Gaming `[28]`–`[29]`, `[33]`](#gaming-2829-33)
+  - [Gaming `[28]`–`[29]`, `[33]`, `[36]`, `[37]`](#gaming-2829-33-36-37)
 - [Deliberately left alone](#deliberately-left-alone)
 - [Known gotchas](#known-gotchas)
 - [When to re-run](#when-to-re-run)
@@ -145,7 +145,7 @@ Tuning that predates this project, kept enforced:
   link, vendor updaters, and similar. Services that aren't installed are
   skipped, not counted as drift. Side effects are listed in log Section 4.6.
 
-### Advanced `[10]`–`[18]`
+### Advanced `[10]`–`[18]`, `[34]`, `[35]`
 
 | # | Setting | Why |
 |---|---|---|
@@ -159,6 +159,7 @@ Tuning that predates this project, kept enforced:
 | 17 | Realtek Ethernet EEE / Green / Power Saving off | Caused link drops when docked. |
 | 18 | WSL2 `autoMemoryReclaim=gradual`, `sparseVhd=true` | **Check only.** Edit `%USERPROFILE%\.wslconfig` by hand, then `wsl --shutdown`. |
 | 34 | Wi-Fi roaming aggressiveness = Lowest | Stops the AX201 from background-scanning for other BSSIDs when signal fluctuates, preventing ping spikes. |
+| 35 | Windows Update: no auto-reboot with logged-on users | Stops Windows from force-restarting the laptop overnight or during gaming/compiling tasks while a user is logged on. |
 
 ### GPU driver pin `[19]`
 
@@ -193,7 +194,7 @@ memory use and fewer background wakeups.
 | 27 | **Nahimic audio kept ON** (exception) | Nahimic's sound effects are what make this laptop's speakers sound good. Its service and session tasks are kept on, so no debloat run can switch them off. |
 | 32 | Brave background mode off (policy) | Stops extensions and background worker processes staying in RAM after close. |
 
-### Gaming `[28]`–`[29]`, `[33]`
+### Gaming `[28]`–`[29]`, `[33]`, `[36]`, `[37]`
 
 Added for Fortnite.
 
@@ -203,6 +204,8 @@ Added for Fortnite.
 | 28b | **Daily apps on Iris Xe (Power saving)** | Binds Antigravity IDE and ConfigEditor to Iris Xe, preventing them from waking or holding VRAM on the Arc dGPU. *(per user)* |
 | 29 | Game Mode on | Already on; now enforced. *(per user)* |
 | 33 | Network throttling off + SystemResponsiveness 0 | Disables Windows NDIS packet throttling (`0xFFFFFFFF`) and dedicates 100% CPU priority to foreground games. |
+| 36 | GameBarPresenceWriter background hook off | Stops `GameBarPresenceWriter.exe` from spawning and injecting into games, eliminating presence polling stutters. |
+| 37 | TCP immediate ACK & NoDelay (physical adapters) | Disables delayed ACKs and Nagle's buffering algorithm on Wi-Fi and Ethernet for minimal multiplayer packet latency. |
 
 Already helping: Game DVR off `[25]`, memory compression `[15]`, CPU at 100%
 on AC `[2]`, and the AC-only latency tweaks `[12]`/`[13]`. Easy Anti-Cheat is

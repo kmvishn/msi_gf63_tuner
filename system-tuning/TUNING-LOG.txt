@@ -992,6 +992,48 @@
  AFTER    Wi-Fi advanced property: RoamAggressiveness = 1. Lowest
  REVERT   Set-NetAdapterAdvancedProperty -Name WiFi -DisplayName 'Roaming Aggressiveness' -DisplayValue '3. Medium'
 
+-------------------------------------------------------------------------------
+ [35] WINDOWS UPDATE NO AUTO-REBOOT WHILE LOGGED ON         ADDED 2026-11-06
+-------------------------------------------------------------------------------
+ WHY      By default, Windows Update can trigger automatic reboots if an update
+          has finished installing, interrupting long compiling sessions, active
+          downloads, or gaming sessions. Setting NoAutoRebootWithLoggedOnUsers = 1
+          guarantees that as long as any user is logged on, Windows will never
+          force-restart the laptop behind your back.
+ AFTER    HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU
+            NoAutoRebootWithLoggedOnUsers = 1
+ REVERT   Remove-ItemProperty 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU' -Name NoAutoRebootWithLoggedOnUsers -EA 0
+
+-------------------------------------------------------------------------------
+ [36] GAMEBARPRESENCEWRITER BACKGROUND HOOK -> OFF          ADDED 2026-11-06
+-------------------------------------------------------------------------------
+ WHY      Even with Game DVR and Xbox overlay recording turned off, Windows spawns
+          GameBarPresenceWriter.exe in the background whenever a game executable
+          starts, attempting to query and broadcast presence data to Xbox Live.
+          Setting ActivationType = 0 stops Windows from spawning this process or
+          injecting its COM hooks into game processes, eliminating background
+          micro-stutters and frametime drops in games.
+ AFTER    HKLM\SOFTWARE\Microsoft\WindowsRuntime\ActivatableClassId\Windows.Gaming.GameBar.PresenceServer.Internal.PresenceWriter
+            ActivationType = 0
+ REVERT   Set-Dword 'HKLM:\SOFTWARE\Microsoft\WindowsRuntime\ActivatableClassId\Windows.Gaming.GameBar.PresenceServer.Internal.PresenceWriter' ActivationType 1
+
+-------------------------------------------------------------------------------
+ [37] TCP GAMING LATENCY: IMMEDIATE ACK & NODELAY           ADDED 2026-11-06
+-------------------------------------------------------------------------------
+ WHY      Windows implements Nagle's algorithm and delayed ACKs by default,
+          buffering small outgoing packets and delaying ACKs up to 200 ms to
+          reduce network overhead. For multiplayer gaming (e.g. Fortnite) and
+          low-latency network communication, setting TcpAckFrequency = 1 and
+          TCPNoDelay = 1 disables Nagle's algorithm and forces immediate packet
+          transmission and immediate acknowledgment on all physical network
+          adapters (Wi-Fi and Ethernet).
+ AFTER    HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces\<Physical Adapter GUID>
+            TcpAckFrequency = 1
+            TCPNoDelay      = 1
+ REVERT   foreach ($k in TcpPhysicalInterfaceKeys) {
+              Remove-ItemProperty $k -Name TcpAckFrequency, TCPNoDelay -EA 0
+          }
+
 ===============================================================================
  END OF LOG
 ===============================================================================
