@@ -263,6 +263,7 @@ internal sealed partial class MainForm : Form
         // honour the startup switches now the form is live
         if (StartOverlay) { tsiOverlay.Checked = true; }
         if (StartOsd) { tsiOsd.Checked = true; }
+        UpdatePolling();
         if (StartMinimized)
         {
             BeginInvoke(new Action(() =>
@@ -2211,11 +2212,11 @@ internal sealed partial class MainForm : Form
     /// </remarks>
     private void UpdatePolling()
     {
-        bool monitoring = tcMain.SelectedIndex == 3;
+        bool formVisible = Visible && WindowState != FormWindowState.Minimized;
         bool overlayUp = Overlay is not null && !Overlay.IsDisposed && Overlay.Visible;
         bool osdOn = tsiOsd is not null && tsiOsd.Checked;
 
-        if (monitoring || overlayUp || osdOn)
+        if (formVisible || overlayUp || osdOn)
         {
             PollEC();
             tmrPoll.Start();
@@ -2433,7 +2434,7 @@ internal sealed partial class MainForm : Form
         WindowState = FormWindowState.Normal;
         Activate();
         BringToFront();
-        tmrPoll.Start();
+        UpdatePolling();
     }
 
     [DllImport("kernel32.dll", SetLastError = true)]
