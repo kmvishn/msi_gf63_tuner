@@ -296,6 +296,11 @@ public static class Theme
                 cb.ForeColor = Text;
                 break;
 
+            case DarkCheckBox dcb:
+                // DarkCheckBox handles its own high-contrast neon red active render
+                SetTransparentBack(dcb);
+                break;
+
             case CheckBox cbx:
                 cbx.FlatStyle = FlatStyle.Flat;
                 cbx.ForeColor = Text;

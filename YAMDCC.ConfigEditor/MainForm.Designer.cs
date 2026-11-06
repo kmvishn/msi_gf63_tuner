@@ -1,4 +1,4 @@
-﻿// This file is part of YAMDCC (Yet Another MSI Dragon Center Clone).
+// This file is part of YAMDCC (Yet Another MSI Dragon Center Clone).
 // Copyright © Sparronator9999 and Contributors 2023-2025.
 //
 // YAMDCC is free software: you can redistribute it and/or modify it
@@ -114,11 +114,11 @@ namespace YAMDCC.ConfigEditor
             this.btnFanSel = new System.Windows.Forms.Button();
             this.cboFanMode = new YAMDCC.Common.UI.DarkComboBox();
             this.cboPerfMode = new YAMDCC.Common.UI.DarkComboBox();
-            this.chkWinFnSwap = new System.Windows.Forms.CheckBox();
+            this.chkWinFnSwap = new YAMDCC.Common.UI.DarkCheckBox();
             this.lblKeyLightLow = new System.Windows.Forms.Label();
             this.tbKeyLight = new YAMDCC.Common.UI.DarkTrackBar();
             this.lblKeyLightHigh = new System.Windows.Forms.Label();
-            this.chkChgLim = new System.Windows.Forms.CheckBox();
+            this.chkChgLim = new YAMDCC.Common.UI.DarkCheckBox();
             this.numChgLim = new System.Windows.Forms.NumericUpDown();
             this.txtFirmDate = new System.Windows.Forms.TextBox();
             this.txtModel = new System.Windows.Forms.TextBox();
@@ -134,7 +134,7 @@ namespace YAMDCC.ConfigEditor
             this.lblRPM2 = new System.Windows.Forms.Label();
             this.lblRPM3 = new System.Windows.Forms.Label();
             this.lblRPM4 = new System.Windows.Forms.Label();
-            this.chkFullBlast = new System.Windows.Forms.CheckBox();
+            this.chkFullBlast = new YAMDCC.Common.UI.DarkCheckBox();
             this.btnRevert = new System.Windows.Forms.Button();
             this.btnApply = new System.Windows.Forms.Button();
             this.lblStatus = new System.Windows.Forms.Label();
@@ -1339,16 +1339,16 @@ namespace YAMDCC.ConfigEditor
         private System.Windows.Forms.Button btnProfDel;
         private System.Windows.Forms.NumericUpDown numChgLim;
         private YAMDCC.Common.UI.DarkComboBox cboPerfMode;
-        private System.Windows.Forms.CheckBox chkWinFnSwap;
+        private YAMDCC.Common.UI.DarkCheckBox chkWinFnSwap;
         private YAMDCC.Common.UI.DarkTrackBar tbKeyLight;
-        private System.Windows.Forms.CheckBox chkFullBlast;
+        private YAMDCC.Common.UI.DarkCheckBox chkFullBlast;
         private System.Windows.Forms.Button btnApply;
         private System.Windows.Forms.Button btnRevert;
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.TableLayoutPanel tblMain;
         private System.Windows.Forms.Label lblKeyLightLow;
         private System.Windows.Forms.Label lblKeyLightHigh;
-        private System.Windows.Forms.CheckBox chkChgLim;
+        private YAMDCC.Common.UI.DarkCheckBox chkChgLim;
         private System.Windows.Forms.ToolStripMenuItem tsiLogNone;
         private System.Windows.Forms.ToolStripMenuItem tsiLogDebug;
         private System.Windows.Forms.ToolStripMenuItem tsiLogInfo;
