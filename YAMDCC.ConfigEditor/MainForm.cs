@@ -489,6 +489,14 @@ internal sealed partial class MainForm : Form
                 case Response.ConfLoaded:
                 {
                     LoadConf(Paths.CurrentConfV2);
+                    if (Config?.CpuFan?.FanProfs != null && Config.CpuFan.ProfSel < Config.CpuFan.FanProfs.Count)
+                    {
+                        string pName = Config.CpuFan.FanProfs[Config.CpuFan.ProfSel].Name;
+                        if (!Visible || WindowState == FormWindowState.Minimized || !Focused)
+                        {
+                            ProfileOsdToast.ShowToast(pName);
+                        }
+                    }
                     break;
                 }
             }
@@ -940,6 +948,11 @@ internal sealed partial class MainForm : Form
             lblHeaderProf.Text = $"ACTIVE: {cfg.FanProfs[cboProfSel.SelectedIndex].Name.ToUpperInvariant()}";
         }
 
+        if (!Visible || WindowState == FormWindowState.Minimized || !Focused)
+        {
+            ProfileOsdToast.ShowToast(curveCfg.Name);
+        }
+
         cboProfPerfMode.SelectedIndex = (int)Config.CpuFan
             .FanProfs[cfg.ProfSel].PerfMode + 1;
         cboProfPerfMode.Enabled = true;
@@ -1194,6 +1207,10 @@ internal sealed partial class MainForm : Form
     {
         ToggleSvcCmds(false);
         SendSvcMessage(new ServiceCommand(Command.SetFullBlast, chkFullBlast.Checked ? 1 : 0));
+        if (!Visible || WindowState == FormWindowState.Minimized || !Focused)
+        {
+            ProfileOsdToast.ShowToast(chkFullBlast.Checked ? "COOLER BOOST: ACTIVE" : "COOLER BOOST: DISABLED");
+        }
     }
 
     private void RevertConf(object sender, EventArgs e)
@@ -2275,9 +2292,10 @@ internal sealed partial class MainForm : Form
         tmiTrayProfiles = new ToolStripMenuItem("Fan Profile");
         cmsTray.Items.Add(tmiTrayProfiles);
 
-        tmiTrayFullBlast = new ToolStripMenuItem("Full Blast Fan", null, (s, e) =>
+        tmiTrayFullBlast = new ToolStripMenuItem("Cooler Boost (100% Fan)", null, (s, e) =>
         {
             chkFullBlast.Checked = !chkFullBlast.Checked;
+            ProfileOsdToast.ShowToast(chkFullBlast.Checked ? "COOLER BOOST: ACTIVE" : "COOLER BOOST: DISABLED");
         });
         cmsTray.Items.Add(tmiTrayFullBlast);
 
@@ -2323,6 +2341,7 @@ internal sealed partial class MainForm : Form
                 {
                     cboProfSel.SelectedIndex = profIdx;
                     ApplyConf(this, EventArgs.Empty);
+                    ProfileOsdToast.ShowToast(profName);
                 }
             })
             {
