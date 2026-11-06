@@ -79,6 +79,7 @@ namespace YAMDCC.ConfigEditor
             System.Windows.Forms.Label lblRPMs;
             System.Windows.Forms.TableLayoutPanel tblApply;
             System.Windows.Forms.FlowLayoutPanel flwStats;
+            System.Windows.Forms.FlowLayoutPanel flwApplyActions;
             this.tsiFile = new System.Windows.Forms.ToolStripMenuItem();
             this.tsiLoadConf = new System.Windows.Forms.ToolStripMenuItem();
             this.tsiSaveConf = new System.Windows.Forms.ToolStripMenuItem();
@@ -176,6 +177,7 @@ namespace YAMDCC.ConfigEditor
             lblRPMs = new System.Windows.Forms.Label();
             tblApply = new System.Windows.Forms.TableLayoutPanel();
             flwStats = new System.Windows.Forms.FlowLayoutPanel();
+            flwApplyActions = new System.Windows.Forms.FlowLayoutPanel();
             menuStrip.SuspendLayout();
             tabFC.SuspendLayout();
             this.tblFanControl.SuspendLayout();
@@ -477,34 +479,29 @@ namespace YAMDCC.ConfigEditor
             tabFC.Controls.Add(this.tblFanControl);
             tabFC.Location = new System.Drawing.Point(4, 24);
             tabFC.Name = "tabFC";
-            tabFC.Size = new System.Drawing.Size(526, 336);
+            tabFC.Size = new System.Drawing.Size(752, 420);
             tabFC.TabIndex = 0;
-            tabFC.Text = "Fan control";
+            tabFC.Text = "  ⚡ FAN CONTROL  ";
             // 
             // tblFanControl
             // 
-            // NOTE: was 8 columns; the last two held a per-profile "Perf. mode"
-            // selector that duplicated the global one on the Extras tab, so it
-            // was removed. cboProfPerfMode still exists as an object because the
-            // config's per-profile PerfMode is still read and written - it just
-            // is not shown.
-            this.tblFanControl.ColumnCount = 6;
+            this.tblFanControl.ColumnCount = 8;
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
-            // NOTE: the profile selector is a fixed width and all of the free
-            // width goes to the trailing spacer. Giving the selector the slack
-            // instead pushed the +/- buttons that follow it off the right edge
-            // of the window, and stretched the combo box across the form.
+            this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblFanControl.Controls.Add(this.btnProfDel, 4, 0);
-            this.tblFanControl.Controls.Add(this.btnProfAdd, 3, 0);
-            this.tblFanControl.Controls.Add(this.cboProfSel, 2, 0);
-            this.tblFanControl.Controls.Add(lblProfSel, 1, 0);
-            this.tblFanControl.Controls.Add(this.tblCurve, 0, 1);
             this.tblFanControl.Controls.Add(this.btnFanSel, 0, 0);
+            this.tblFanControl.Controls.Add(lblProfSel, 1, 0);
+            this.tblFanControl.Controls.Add(this.cboProfSel, 2, 0);
+            this.tblFanControl.Controls.Add(this.btnProfAdd, 3, 0);
+            this.tblFanControl.Controls.Add(this.btnProfDel, 4, 0);
+            this.tblFanControl.Controls.Add(lblProfPerfMode, 5, 0);
+            this.tblFanControl.Controls.Add(this.cboProfPerfMode, 6, 0);
+            this.tblFanControl.Controls.Add(this.tblCurve, 0, 1);
             this.tblFanControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tblFanControl.Location = new System.Drawing.Point(0, 0);
             this.tblFanControl.Margin = new System.Windows.Forms.Padding(0);
@@ -512,7 +509,7 @@ namespace YAMDCC.ConfigEditor
             this.tblFanControl.RowCount = 2;
             this.tblFanControl.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tblFanControl.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblFanControl.Size = new System.Drawing.Size(526, 336);
+            this.tblFanControl.Size = new System.Drawing.Size(752, 420);
             this.tblFanControl.TabIndex = 0;
             // 
             // cboProfPerfMode
@@ -589,7 +586,7 @@ namespace YAMDCC.ConfigEditor
             // 
             this.tblCurve.AutoSize = true;
             this.tblCurve.ColumnCount = 1;
-            this.tblFanControl.SetColumnSpan(this.tblCurve, 6);
+            this.tblFanControl.SetColumnSpan(this.tblCurve, 8);
             this.tblCurve.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblCurve.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 20F));
             this.tblCurve.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -606,11 +603,12 @@ namespace YAMDCC.ConfigEditor
             // 
             // btnFanSel
             // 
+            this.btnFanSel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this.btnFanSel.Location = new System.Drawing.Point(3, 3);
             this.btnFanSel.Name = "btnFanSel";
-            this.btnFanSel.Size = new System.Drawing.Size(75, 23);
+            this.btnFanSel.Size = new System.Drawing.Size(125, 26);
             this.btnFanSel.TabIndex = 9;
-            this.btnFanSel.Text = "CPU Fan";
+            this.btnFanSel.Text = "⚡ CPU Fan";
             this.btnFanSel.UseVisualStyleBackColor = true;
             this.btnFanSel.Click += new System.EventHandler(this.FanSelChange);
             // 
@@ -620,9 +618,9 @@ namespace YAMDCC.ConfigEditor
             tabExtra.Controls.Add(tblExtra);
             tabExtra.Location = new System.Drawing.Point(4, 24);
             tabExtra.Name = "tabExtra";
-            tabExtra.Size = new System.Drawing.Size(526, 336);
+            tabExtra.Size = new System.Drawing.Size(752, 420);
             tabExtra.TabIndex = 1;
-            tabExtra.Text = "Extras";
+            tabExtra.Text = "  ⚙️ HARDWARE EXTRAS  ";
             // 
             // tblExtra
             // 
@@ -958,9 +956,9 @@ namespace YAMDCC.ConfigEditor
             tabECMon.Location = new System.Drawing.Point(4, 24);
             tabECMon.Name = "tabECMon";
             tabECMon.Padding = new System.Windows.Forms.Padding(3);
-            tabECMon.Size = new System.Drawing.Size(526, 336);
+            tabECMon.Size = new System.Drawing.Size(752, 420);
             tabECMon.TabIndex = 3;
-            tabECMon.Text = "Monitoring";
+            tabECMon.Text = "  📊 LIVE MONITORING  ";
             tabECMon.UseVisualStyleBackColor = true;
             // 
             // tableLayoutPanel1
@@ -1150,48 +1148,67 @@ namespace YAMDCC.ConfigEditor
             tblApply.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             tblApply.Controls.Add(this.chkFullBlast, 0, 0);
             tblApply.Controls.Add(this.btnRevert, 1, 0);
-            tblApply.Controls.Add(this.btnApply, 2, 0);
+            tblApply.ColumnCount = 2;
+            tblApply.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            tblApply.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            tblApply.Controls.Add(this.chkFullBlast, 0, 0);
+            tblApply.Controls.Add(flwApplyActions, 1, 0);
             tblApply.Dock = System.Windows.Forms.DockStyle.Fill;
-            tblApply.Location = new System.Drawing.Point(2, 369);
-            tblApply.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            tblApply.Location = new System.Drawing.Point(4, 492);
+            tblApply.Margin = new System.Windows.Forms.Padding(4, 2, 4, 2);
             tblApply.Name = "tblApply";
             tblApply.RowCount = 1;
             tblApply.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            tblApply.Size = new System.Drawing.Size(536, 29);
-            tblApply.TabIndex = 1;
+            tblApply.Size = new System.Drawing.Size(752, 38);
+            tblApply.TabIndex = 2;
             // 
             // chkFullBlast
             // 
+            this.chkFullBlast.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.chkFullBlast.AutoSize = true;
-            this.chkFullBlast.Location = new System.Drawing.Point(5, 5);
-            this.chkFullBlast.Margin = new System.Windows.Forms.Padding(5, 5, 6, 5);
+            this.chkFullBlast.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
+            this.chkFullBlast.Location = new System.Drawing.Point(6, 8);
+            this.chkFullBlast.Margin = new System.Windows.Forms.Padding(6, 4, 6, 4);
             this.chkFullBlast.Name = "chkFullBlast";
-            this.chkFullBlast.Size = new System.Drawing.Size(73, 19);
+            this.chkFullBlast.Size = new System.Drawing.Size(205, 21);
             this.chkFullBlast.TabIndex = 0;
-            this.chkFullBlast.Text = "Full &Blast";
+            this.chkFullBlast.Text = "⚡ COOLER BOOST (100% FAN)";
             this.chkFullBlast.UseVisualStyleBackColor = true;
             this.chkFullBlast.CheckedChanged += new System.EventHandler(this.FullBlastToggle);
+            // 
+            // flwApplyActions
+            // 
+            flwApplyActions.Anchor = System.Windows.Forms.AnchorStyles.Right;
+            flwApplyActions.AutoSize = true;
+            flwApplyActions.Controls.Add(this.btnRevert);
+            flwApplyActions.Controls.Add(this.btnApply);
+            flwApplyActions.Location = new System.Drawing.Point(505, 3);
+            flwApplyActions.Margin = new System.Windows.Forms.Padding(0);
+            flwApplyActions.Name = "flwApplyActions";
+            flwApplyActions.Size = new System.Drawing.Size(244, 32);
+            flwApplyActions.TabIndex = 1;
             // 
             // btnRevert
             // 
             this.btnRevert.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.btnRevert.Location = new System.Drawing.Point(378, 2);
-            this.btnRevert.Margin = new System.Windows.Forms.Padding(2, 2, 3, 2);
+            this.btnRevert.Location = new System.Drawing.Point(3, 2);
+            this.btnRevert.Margin = new System.Windows.Forms.Padding(3, 2, 6, 2);
             this.btnRevert.Name = "btnRevert";
-            this.btnRevert.Size = new System.Drawing.Size(75, 25);
-            this.btnRevert.TabIndex = 1;
-            this.btnRevert.Text = "&Revert";
+            this.btnRevert.Size = new System.Drawing.Size(90, 28);
+            this.btnRevert.TabIndex = 0;
+            this.btnRevert.Text = "↺ Revert";
             this.btnRevert.UseVisualStyleBackColor = true;
             this.btnRevert.Click += new System.EventHandler(this.RevertConf);
             // 
             // btnApply
             // 
-            this.btnApply.Location = new System.Drawing.Point(458, 2);
-            this.btnApply.Margin = new System.Windows.Forms.Padding(2, 2, 3, 2);
+            this.btnApply.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
+            this.btnApply.Location = new System.Drawing.Point(102, 2);
+            this.btnApply.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnApply.Name = "btnApply";
-            this.btnApply.Size = new System.Drawing.Size(75, 25);
-            this.btnApply.TabIndex = 2;
-            this.btnApply.Text = "&Apply";
+            this.btnApply.Size = new System.Drawing.Size(135, 28);
+            this.btnApply.TabIndex = 1;
+            this.btnApply.Text = "✓ APPLY TO EC";
             this.btnApply.UseVisualStyleBackColor = true;
             this.btnApply.Click += new System.EventHandler(this.ApplyConf);
             // 
@@ -1200,20 +1217,22 @@ namespace YAMDCC.ConfigEditor
             flwStats.AutoSize = true;
             flwStats.Controls.Add(this.lblStatus);
             flwStats.Dock = System.Windows.Forms.DockStyle.Fill;
-            flwStats.Location = new System.Drawing.Point(0, 398);
-            flwStats.Margin = new System.Windows.Forms.Padding(0, 0, 0, 3);
+            flwStats.Location = new System.Drawing.Point(8, 534);
+            flwStats.Margin = new System.Windows.Forms.Padding(8, 0, 8, 2);
             flwStats.Name = "flwStats";
-            flwStats.Size = new System.Drawing.Size(540, 15);
-            flwStats.TabIndex = 2;
+            flwStats.Size = new System.Drawing.Size(744, 18);
+            flwStats.TabIndex = 3;
             // 
             // lblStatus
             // 
             this.lblStatus.AutoSize = true;
+            this.lblStatus.Font = new System.Drawing.Font("Segoe UI", 8.5F, System.Drawing.FontStyle.Bold);
+            this.lblStatus.ForeColor = System.Drawing.Color.FromArgb(140, 230, 160);
             this.lblStatus.Location = new System.Drawing.Point(3, 0);
             this.lblStatus.Name = "lblStatus";
-            this.lblStatus.Size = new System.Drawing.Size(39, 15);
+            this.lblStatus.Size = new System.Drawing.Size(56, 15);
             this.lblStatus.TabIndex = 0;
-            this.lblStatus.Text = "Ready";
+            this.lblStatus.Text = "● Ready";
             // 
             // tcMain
             // 
@@ -1222,12 +1241,12 @@ namespace YAMDCC.ConfigEditor
             this.tcMain.Controls.Add(this.tabInfo);
             this.tcMain.Controls.Add(tabECMon);
             this.tcMain.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tcMain.Location = new System.Drawing.Point(3, 3);
+            this.tcMain.Location = new System.Drawing.Point(3, 51);
             this.tcMain.Margin = new System.Windows.Forms.Padding(3, 3, 3, 2);
             this.tcMain.Name = "tcMain";
             this.tcMain.SelectedIndex = 0;
-            this.tcMain.Size = new System.Drawing.Size(534, 364);
-            this.tcMain.TabIndex = 0;
+            this.tcMain.Size = new System.Drawing.Size(754, 437);
+            this.tcMain.TabIndex = 1;
             this.tcMain.SelectedIndexChanged += new System.EventHandler(this.tcMain_SelectedIndexChanged);
             // 
             // tabInfo
@@ -1236,28 +1255,128 @@ namespace YAMDCC.ConfigEditor
             this.tabInfo.Location = new System.Drawing.Point(4, 24);
             this.tabInfo.Name = "tabInfo";
             this.tabInfo.Padding = new System.Windows.Forms.Padding(3);
-            this.tabInfo.Size = new System.Drawing.Size(526, 336);
+            this.tabInfo.Size = new System.Drawing.Size(752, 420);
             this.tabInfo.TabIndex = 2;
-            this.tabInfo.Text = "Info";
+            this.tabInfo.Text = "  ℹ️ SYSTEM INFO  ";
             this.tabInfo.UseVisualStyleBackColor = true;
+            // 
+            // pnlHeader
+            // 
+            this.pnlHeader = new System.Windows.Forms.Panel();
+            this.pnlHeaderStripe = new System.Windows.Forms.Panel();
+            this.lblHeaderTitle = new System.Windows.Forms.Label();
+            this.lblHeaderSubtitle = new System.Windows.Forms.Label();
+            this.flwHeaderTelemetry = new System.Windows.Forms.FlowLayoutPanel();
+            this.lblHeaderProf = new System.Windows.Forms.Label();
+            this.lblHeaderGpu = new System.Windows.Forms.Label();
+            this.lblHeaderCpu = new System.Windows.Forms.Label();
+            this.pnlHeader.BackColor = System.Drawing.Color.FromArgb(21, 21, 27);
+            this.pnlHeader.Controls.Add(this.flwHeaderTelemetry);
+            this.pnlHeader.Controls.Add(this.lblHeaderSubtitle);
+            this.pnlHeader.Controls.Add(this.lblHeaderTitle);
+            this.pnlHeader.Controls.Add(this.pnlHeaderStripe);
+            this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pnlHeader.Location = new System.Drawing.Point(0, 0);
+            this.pnlHeader.Margin = new System.Windows.Forms.Padding(0);
+            this.pnlHeader.Name = "pnlHeader";
+            this.pnlHeader.Size = new System.Drawing.Size(760, 48);
+            this.pnlHeader.TabIndex = 0;
+            // 
+            // pnlHeaderStripe
+            // 
+            this.pnlHeaderStripe.BackColor = System.Drawing.Color.FromArgb(255, 26, 60);
+            this.pnlHeaderStripe.Location = new System.Drawing.Point(8, 7);
+            this.pnlHeaderStripe.Name = "pnlHeaderStripe";
+            this.pnlHeaderStripe.Size = new System.Drawing.Size(4, 34);
+            this.pnlHeaderStripe.TabIndex = 0;
+            // 
+            // lblHeaderTitle
+            // 
+            this.lblHeaderTitle.AutoSize = true;
+            this.lblHeaderTitle.Font = new System.Drawing.Font("Segoe UI", 12.5F, System.Drawing.FontStyle.Bold);
+            this.lblHeaderTitle.ForeColor = System.Drawing.Color.White;
+            this.lblHeaderTitle.Location = new System.Drawing.Point(18, 5);
+            this.lblHeaderTitle.Name = "lblHeaderTitle";
+            this.lblHeaderTitle.Size = new System.Drawing.Size(155, 23);
+            this.lblHeaderTitle.TabIndex = 1;
+            this.lblHeaderTitle.Text = "MSI GF63 TUNER";
+            // 
+            // lblHeaderSubtitle
+            // 
+            this.lblHeaderSubtitle.AutoSize = true;
+            this.lblHeaderSubtitle.Font = new System.Drawing.Font("Segoe UI", 7.5F, System.Drawing.FontStyle.Bold);
+            this.lblHeaderSubtitle.ForeColor = System.Drawing.Color.FromArgb(158, 148, 154);
+            this.lblHeaderSubtitle.Location = new System.Drawing.Point(19, 28);
+            this.lblHeaderSubtitle.Name = "lblHeaderSubtitle";
+            this.lblHeaderSubtitle.Size = new System.Drawing.Size(192, 12);
+            this.lblHeaderSubtitle.TabIndex = 2;
+            this.lblHeaderSubtitle.Text = "THIN GF63 12HW • EC HARDWARE SUITE";
+            // 
+            // flwHeaderTelemetry
+            // 
+            this.flwHeaderTelemetry.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.flwHeaderTelemetry.AutoSize = true;
+            this.flwHeaderTelemetry.Controls.Add(this.lblHeaderProf);
+            this.flwHeaderTelemetry.Controls.Add(this.lblHeaderGpu);
+            this.flwHeaderTelemetry.Controls.Add(this.lblHeaderCpu);
+            this.flwHeaderTelemetry.FlowDirection = System.Windows.Forms.FlowDirection.RightToLeft;
+            this.flwHeaderTelemetry.Location = new System.Drawing.Point(380, 10);
+            this.flwHeaderTelemetry.Name = "flwHeaderTelemetry";
+            this.flwHeaderTelemetry.Size = new System.Drawing.Size(370, 28);
+            this.flwHeaderTelemetry.TabIndex = 3;
+            // 
+            // lblHeaderProf
+            // 
+            this.lblHeaderProf.AutoSize = true;
+            this.lblHeaderProf.BackColor = System.Drawing.Color.FromArgb(28, 28, 36);
+            this.lblHeaderProf.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.lblHeaderProf.Font = new System.Drawing.Font("Segoe UI", 8.5F, System.Drawing.FontStyle.Bold);
+            this.lblHeaderProf.ForeColor = System.Drawing.Color.FromArgb(255, 26, 60);
+            this.lblHeaderProf.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            this.lblHeaderProf.Padding = new System.Windows.Forms.Padding(8, 3, 8, 3);
+            this.lblHeaderProf.Text = "BALANCED";
+            // 
+            // lblHeaderGpu
+            // 
+            this.lblHeaderGpu.AutoSize = true;
+            this.lblHeaderGpu.BackColor = System.Drawing.Color.FromArgb(28, 28, 36);
+            this.lblHeaderGpu.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.lblHeaderGpu.Font = new System.Drawing.Font("Segoe UI", 8.5F, System.Drawing.FontStyle.Bold);
+            this.lblHeaderGpu.ForeColor = System.Drawing.Color.FromArgb(242, 243, 245);
+            this.lblHeaderGpu.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            this.lblHeaderGpu.Padding = new System.Windows.Forms.Padding(8, 3, 8, 3);
+            this.lblHeaderGpu.Text = "GPU: --°C";
+            // 
+            // lblHeaderCpu
+            // 
+            this.lblHeaderCpu.AutoSize = true;
+            this.lblHeaderCpu.BackColor = System.Drawing.Color.FromArgb(28, 28, 36);
+            this.lblHeaderCpu.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.lblHeaderCpu.Font = new System.Drawing.Font("Segoe UI", 8.5F, System.Drawing.FontStyle.Bold);
+            this.lblHeaderCpu.ForeColor = System.Drawing.Color.FromArgb(242, 243, 245);
+            this.lblHeaderCpu.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            this.lblHeaderCpu.Padding = new System.Windows.Forms.Padding(8, 3, 8, 3);
+            this.lblHeaderCpu.Text = "CPU: --°C";
             // 
             // tblMain
             // 
             this.tblMain.ColumnCount = 1;
             this.tblMain.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblMain.Controls.Add(this.tcMain, 0, 0);
-            this.tblMain.Controls.Add(tblApply, 0, 1);
-            this.tblMain.Controls.Add(flwStats, 0, 2);
+            this.tblMain.Controls.Add(this.pnlHeader, 0, 0);
+            this.tblMain.Controls.Add(this.tcMain, 0, 1);
+            this.tblMain.Controls.Add(tblApply, 0, 2);
+            this.tblMain.Controls.Add(flwStats, 0, 3);
             this.tblMain.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tblMain.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.tblMain.Location = new System.Drawing.Point(0, 24);
             this.tblMain.Margin = new System.Windows.Forms.Padding(0);
             this.tblMain.Name = "tblMain";
-            this.tblMain.RowCount = 3;
+            this.tblMain.RowCount = 4;
+            this.tblMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 48F));
             this.tblMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblMain.RowStyles.Add(new System.Windows.Forms.RowStyle());
-            this.tblMain.RowStyles.Add(new System.Windows.Forms.RowStyle());
-            this.tblMain.Size = new System.Drawing.Size(540, 416);
+            this.tblMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 40F));
+            this.tblMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 20F));
+            this.tblMain.Size = new System.Drawing.Size(760, 536);
             this.tblMain.TabIndex = 1;
             // 
             // MainForm
@@ -1266,7 +1385,7 @@ namespace YAMDCC.ConfigEditor
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.CancelButton = this.btnRevert;
-            this.ClientSize = new System.Drawing.Size(540, 440);
+            this.ClientSize = new System.Drawing.Size(760, 560);
             this.Controls.Add(this.tblMain);
             this.Controls.Add(menuStrip);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
@@ -1294,6 +1413,8 @@ namespace YAMDCC.ConfigEditor
             tabECMon.ResumeLayout(false);
             tableLayoutPanel1.ResumeLayout(false);
             tableLayoutPanel1.PerformLayout();
+            flwApplyActions.ResumeLayout(false);
+            flwApplyActions.PerformLayout();
             tblApply.ResumeLayout(false);
             tblApply.PerformLayout();
             flwStats.ResumeLayout(false);
@@ -1371,5 +1492,13 @@ namespace YAMDCC.ConfigEditor
         private System.Windows.Forms.Label lblFanSpdC;
         private System.Windows.Forms.Label lblRPM3;
         private System.Windows.Forms.Label lblRPM4;
+        private System.Windows.Forms.Panel pnlHeader;
+        private System.Windows.Forms.Panel pnlHeaderStripe;
+        private System.Windows.Forms.Label lblHeaderTitle;
+        private System.Windows.Forms.Label lblHeaderSubtitle;
+        private System.Windows.Forms.FlowLayoutPanel flwHeaderTelemetry;
+        private System.Windows.Forms.Label lblHeaderProf;
+        private System.Windows.Forms.Label lblHeaderGpu;
+        private System.Windows.Forms.Label lblHeaderCpu;
     }
 }

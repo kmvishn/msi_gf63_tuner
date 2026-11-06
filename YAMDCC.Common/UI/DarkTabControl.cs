@@ -46,6 +46,8 @@ public sealed class DarkTabControl : TabControl
         Appearance = TabAppearance.FlatButtons;
         BackColor = Theme.Background;
         ForeColor = Theme.Text;
+        ItemSize = new Size(160, 34);
+        SizeMode = TabSizeMode.Fixed;
     }
 
     protected override void OnMouseMove(MouseEventArgs e)

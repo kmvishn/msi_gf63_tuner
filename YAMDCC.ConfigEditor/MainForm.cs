@@ -127,8 +127,10 @@ internal sealed partial class MainForm : Form
         // separately or it pops up as a white box on the dark form.
         Theme.Apply(ttMain);
 
-        // rebuild the Monitoring tab to include the driver-free sensors
+        // rebuild the Monitoring and Extras tabs with modern cards
         BuildMonitoringTab();
+        SetupModernExtrasTab();
+        UpdateFanSelButton();
         AddOverlayMenuItem();
 
         // Set the window icon using the application icon.
@@ -365,6 +367,11 @@ internal sealed partial class MainForm : Form
                     {
                         lblTempC.Text = $"{cpuTemp}°C";
                         lblTempG.Text = $"{gpuTemp}°C";
+                        string rpmStr = lblRPM1 != null && !string.IsNullOrEmpty(lblRPM1.Text) && lblRPM1.Text != "0 RPM"
+                            ? $" • {lblRPM1.Text}"
+                            : "";
+                        if (lblHeaderCpu != null) { lblHeaderCpu.Text = $"CPU: {cpuTemp}°C{rpmStr}"; }
+                        if (lblHeaderGpu != null) { lblHeaderGpu.Text = $"GPU: {gpuTemp}°C"; }
                         if (notifyIcon != null)
                         {
                             string tip = $"MSI GF63 Tuner: CPU {cpuTemp}°C | GPU {gpuTemp}°C";
@@ -404,6 +411,11 @@ internal sealed partial class MainForm : Form
                         for (int i = 0; i < rpms.Length || i < rpmLabels.Length; i++)
                         {
                             rpmLabels[i].Text = $"{(rpms[i] > -1 ? rpms[i] : 0)} RPM";
+                        }
+
+                        if (rpms.Length > 0 && rpms[0] > 0 && lblHeaderCpu != null)
+                        {
+                            lblHeaderCpu.Text = $"CPU: {lblTempC.Text} • {rpms[0]} RPM";
                         }
                     }
                     break;
@@ -774,10 +786,29 @@ internal sealed partial class MainForm : Form
 
     #endregion
 
+    private void UpdateFanSelButton()
+    {
+        if (btnFanSel == null) return;
+        if (!GPUFan)
+        {
+            btnFanSel.Text = "⚡ CPU FAN (Active)";
+            btnFanSel.BackColor = Theme.Accent;
+            btnFanSel.ForeColor = Color.White;
+            btnFanSel.FlatAppearance.BorderColor = Theme.AccentHover;
+        }
+        else
+        {
+            btnFanSel.Text = "🎮 GPU FAN (Active)";
+            btnFanSel.BackColor = Color.FromArgb(0x00, 0x7A, 0xCC);
+            btnFanSel.ForeColor = Color.White;
+            btnFanSel.FlatAppearance.BorderColor = Color.FromArgb(0x28, 0x98, 0xEE);
+        }
+    }
+
     private void FanSelChange(object sender, EventArgs e)
     {
         GPUFan = !GPUFan;
-        btnFanSel.Text = GPUFan ? "GPU Fa&n" : "CPU Fa&n";
+        UpdateFanSelButton();
         RefreshFanProf();
     }
 
@@ -805,21 +836,37 @@ internal sealed partial class MainForm : Form
             tblCurve.ColumnStyles.Clear();
             tblCurve.ColumnCount = numFanSpds.Length + 1;
 
+            tblCurve.RowCount = 5;
+            tblCurve.RowStyles.Clear();
+            tblCurve.RowStyles.Add(new RowStyle(SizeType.Absolute, (int)(26 * scale)));
+            tblCurve.RowStyles.Add(new RowStyle(SizeType.Absolute, (int)(30 * scale)));
+            tblCurve.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            tblCurve.RowStyles.Add(new RowStyle(SizeType.Absolute, (int)(30 * scale)));
+            tblCurve.RowStyles.Add(new RowStyle(SizeType.Absolute, (int)(30 * scale)));
+
             // labels on left side
             tblCurve.ColumnStyles.Add(new ColumnStyle());
-            tblCurve.Controls.Add(FanCurveLabel("&Speed (%)", scale, 0), 0, 0);
-            tblCurve.Controls.Add(FanCurveLabel("&Up (°C)", scale, (numFanSpds.Length + 1) * 2), 0, 2);
-            tblCurve.Controls.Add(FanCurveLabel("&Down (°C)", scale, (numFanSpds.Length + 1) * 3), 0, 3);
+            tblCurve.Controls.Add(FanCurveLabel("CURVE", scale, 0, ContentAlignment.MiddleCenter, Theme.TextMuted), 0, 0);
+            tblCurve.Controls.Add(FanCurveLabel("⚡ Speed (%)", scale, 0, ContentAlignment.MiddleRight, Theme.Accent), 0, 1);
+            tblCurve.Controls.Add(FanCurveLabel("▲ Up (°C)", scale, (numFanSpds.Length + 1) * 2, ContentAlignment.MiddleRight, Color.FromArgb(0xFF, 0x8C, 0x00)), 0, 3);
+            tblCurve.Controls.Add(FanCurveLabel("▼ Down (°C)", scale, (numFanSpds.Length + 1) * 3, ContentAlignment.MiddleRight, Color.FromArgb(0x40, 0xC4, 0xFF)), 0, 4);
 
             for (int i = 0; i < numFanSpds.Length; i++)
             {
                 tblCurve.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F / numFanSpds.Length));
 
+                // Row 0: Point header card
+                string ptName = i == numFanSpds.Length - 1 ? $"Pt {i + 1} (Max)" : $"Point {i + 1}";
+                Color ptColor = i == numFanSpds.Length - 1 ? Theme.Accent : Theme.TextMuted;
+                tblCurve.Controls.Add(FanCurveLabel(ptName, scale, 0, ContentAlignment.MiddleCenter, ptColor), i + 1, 0);
+
+                // Row 1: Speed NUD
                 numFanSpds[i] = FanCurveNUD(i, scale, i + 1);
                 ttMain.SetToolTip(numFanSpds[i], Strings.GetString("ttFanSpd"));
                 numFanSpds[i].ValueChanged += new EventHandler(FanSpdChange);
-                tblCurve.Controls.Add(numFanSpds[i], i + 1, 0);
+                tblCurve.Controls.Add(numFanSpds[i], i + 1, 1);
 
+                // Row 2: Precision Slider
                 tbFanSpds[i] = new DarkTrackBar()
                 {
                     Dock = DockStyle.Fill,
@@ -834,30 +881,32 @@ internal sealed partial class MainForm : Form
                 };
                 ttMain.SetToolTip(tbFanSpds[i], Strings.GetString("ttFanSpd"));
                 tbFanSpds[i].ValueChanged += new EventHandler(FanSpdChange);
-                tblCurve.Controls.Add(tbFanSpds[i], i + 1, 1);
+                tblCurve.Controls.Add(tbFanSpds[i], i + 1, 2);
 
+                // Row 3: Up temp
                 if (i != 0)
                 {
                     numUpTs[i - 1] = FanCurveNUD(i - 1, scale, i + (numFanSpds.Length * 2) + 3);
                     ttMain.SetToolTip(numUpTs[i - 1], Strings.GetString("ttUpT"));
                     numUpTs[i - 1].ValueChanged += new EventHandler(UpTChange);
-                    tblCurve.Controls.Add(numUpTs[i - 1], i + 1, 2);
+                    tblCurve.Controls.Add(numUpTs[i - 1], i + 1, 3);
                 }
                 else
                 {
-                    tblCurve.Controls.Add(FanCurveLabel("Default", scale, i + (numFanSpds.Length * 2) + 3, ContentAlignment.MiddleCenter), i + 1, 2);
+                    tblCurve.Controls.Add(FanCurveLabel("Default", scale, i + (numFanSpds.Length * 2) + 3, ContentAlignment.MiddleCenter, Theme.TextMuted), i + 1, 3);
                 }
 
+                // Row 4: Down temp
                 if (i != numFanSpds.Length - 1)
                 {
                     numDownTs[i] = FanCurveNUD(i, scale, i + (numFanSpds.Length * 3) + 4);
                     ttMain.SetToolTip(numDownTs[i], Strings.GetString("ttDownT"));
                     numDownTs[i].ValueChanged += new EventHandler(DownTChange);
-                    tblCurve.Controls.Add(numDownTs[i], i + 1, 3);
+                    tblCurve.Controls.Add(numDownTs[i], i + 1, 4);
                 }
                 else
                 {
-                    tblCurve.Controls.Add(FanCurveLabel("Max", scale, i + (numFanSpds.Length * 3) + 4, ContentAlignment.MiddleCenter), i + 1, 3);
+                    tblCurve.Controls.Add(FanCurveLabel("Max", scale, i + (numFanSpds.Length * 3) + 4, ContentAlignment.MiddleCenter, Theme.Accent), i + 1, 4);
                 }
             }
             tblCurve.ResumeLayout(true);
@@ -885,6 +934,11 @@ internal sealed partial class MainForm : Form
 
         ttMain.SetToolTip(cboProfSel, Strings.GetString(
             "ttProfSel", cfg.FanProfs[cfg.ProfSel].Desc));
+
+        if (lblHeaderProf != null && cboProfSel.SelectedIndex >= 0 && cboProfSel.SelectedIndex < cfg.FanProfs.Count)
+        {
+            lblHeaderProf.Text = $"ACTIVE: {cfg.FanProfs[cboProfSel.SelectedIndex].Name.ToUpperInvariant()}";
+        }
 
         cboProfPerfMode.SelectedIndex = (int)Config.CpuFan
             .FanProfs[cfg.ProfSel].PerfMode + 1;
@@ -1292,9 +1346,14 @@ internal sealed partial class MainForm : Form
         chkWinFnSwap.Checked = false;
         chkWinFnSwap.Enabled = false;
 
-        btnFanSel.Text = "CPU Fa&n";
         GPUFan = false;
+        UpdateFanSelButton();
         RefreshFanProf();
+
+        if (lblHeaderProf != null && Config?.CpuFan?.FanProfs != null && Config.CpuFan.ProfSel < Config.CpuFan.FanProfs.Count)
+        {
+            lblHeaderProf.Text = $"ACTIVE: {Config.CpuFan.FanProfs[Config.CpuFan.ProfSel].Name.ToUpperInvariant()}";
+        }
 
         btnProfAdd.Enabled = true;
         tsiProfAdd.Enabled = true;
@@ -1434,6 +1493,307 @@ internal sealed partial class MainForm : Form
         {
             l.Visible = false;
         }
+    }
+
+    /// <summary>
+    /// Replaces the Extras tab with modern gaming hardware control cards.
+    /// Grouped into Battery Health Master, Keyboard &amp; Hardware Input, and System Power.
+    /// </summary>
+    private void SetupModernExtrasTab()
+    {
+        TabPage page = tcMain.TabPages["tabExtra"];
+        if (page == null) return;
+
+        float scale = CurrentAutoScaleDimensions.Height / 96f;
+        page.Controls.Clear();
+
+        TableLayoutPanel mainLayout = new()
+        {
+            Dock = DockStyle.Fill,
+            AutoScroll = true,
+            Padding = new Padding((int)(14 * scale), (int)(10 * scale), (int)(14 * scale), (int)(10 * scale)),
+            ColumnCount = 1,
+            RowCount = 3,
+        };
+        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+        // =====================================================================
+        // CARD 1: BATTERY HEALTH MASTER
+        // =====================================================================
+        GroupBox gbBattery = new()
+        {
+            Text = "  🔋 BATTERY HEALTH MASTER  ",
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+            ForeColor = Theme.Accent,
+            Padding = new Padding((int)(14 * scale), (int)(12 * scale), (int)(14 * scale), (int)(14 * scale)),
+            Margin = new Padding(0, 0, 0, (int)(12 * scale)),
+        };
+
+        TableLayoutPanel tblBat = new()
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            ColumnCount = 1,
+            RowCount = 3,
+        };
+        tblBat.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+
+        Label lblBatDesc = new()
+        {
+            Text = "Protect lithium-ion battery lifespan and prevent wear when plugged into AC power. EC caps charging at the selected threshold.",
+            Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
+            ForeColor = Theme.TextMuted,
+            AutoSize = true,
+            Margin = new Padding((int)(2 * scale), (int)(2 * scale), (int)(2 * scale), (int)(10 * scale)),
+        };
+        tblBat.Controls.Add(lblBatDesc, 0, 0);
+
+        FlowLayoutPanel flwBatControls = new()
+        {
+            AutoSize = true,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Margin = new Padding(0, 0, 0, (int)(8 * scale)),
+        };
+
+        chkChgLim.Text = "Limit Peak Charge to:";
+        chkChgLim.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+        chkChgLim.Margin = new Padding((int)(3 * scale), (int)(4 * scale), (int)(8 * scale), (int)(4 * scale));
+        chkChgLim.AutoSize = true;
+
+        numChgLim.Margin = new Padding(0, (int)(2 * scale), (int)(4 * scale), (int)(2 * scale));
+        numChgLim.Width = (int)(65 * scale);
+        numChgLim.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+        numChgLim.TextAlign = HorizontalAlignment.Center;
+
+        Label lblBatPct = new()
+        {
+            Text = "%",
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+            ForeColor = Theme.Text,
+            AutoSize = true,
+            Margin = new Padding(0, (int)(5 * scale), (int)(12 * scale), 0),
+        };
+
+        flwBatControls.Controls.Add(chkChgLim);
+        flwBatControls.Controls.Add(numChgLim);
+        flwBatControls.Controls.Add(lblBatPct);
+        tblBat.Controls.Add(flwBatControls, 0, 1);
+
+        FlowLayoutPanel flwBatPresets = new()
+        {
+            AutoSize = true,
+            FlowDirection = FlowDirection.LeftToRight,
+            Margin = new Padding(0, (int)(2 * scale), 0, (int)(4 * scale)),
+        };
+
+        Button btnBat60 = new()
+        {
+            Text = "60% (Max Lifespan - AC Desk)",
+            AutoSize = true,
+            Height = (int)(28 * scale),
+            Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+            Margin = new Padding(0, 0, (int)(8 * scale), 0),
+        };
+        btnBat60.Click += (s, e) =>
+        {
+            chkChgLim.Checked = true;
+            numChgLim.Value = 60;
+        };
+
+        Button btnBat80 = new()
+        {
+            Text = "80% (Balanced Health - Recommended)",
+            AutoSize = true,
+            Height = (int)(28 * scale),
+            Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
+            Margin = new Padding(0, 0, (int)(8 * scale), 0),
+        };
+        btnBat80.Click += (s, e) =>
+        {
+            chkChgLim.Checked = true;
+            numChgLim.Value = 80;
+        };
+
+        Button btnBat100 = new()
+        {
+            Text = "100% (Full Capacity)",
+            AutoSize = true,
+            Height = (int)(28 * scale),
+            Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
+            Margin = new Padding(0, 0, (int)(8 * scale), 0),
+        };
+        btnBat100.Click += (s, e) =>
+        {
+            chkChgLim.Checked = false;
+            numChgLim.Value = 100;
+        };
+
+        flwBatPresets.Controls.Add(btnBat60);
+        flwBatPresets.Controls.Add(btnBat80);
+        flwBatPresets.Controls.Add(btnBat100);
+        tblBat.Controls.Add(flwBatPresets, 0, 2);
+
+        gbBattery.Controls.Add(tblBat);
+        mainLayout.Controls.Add(gbBattery, 0, 0);
+
+        // =====================================================================
+        // CARD 2: KEYBOARD & HARDWARE CONTROLS
+        // =====================================================================
+        GroupBox gbInput = new()
+        {
+            Text = "  ⌨️ KEYBOARD & HARDWARE INPUT  ",
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+            ForeColor = Theme.Accent,
+            Padding = new Padding((int)(14 * scale), (int)(12 * scale), (int)(14 * scale), (int)(14 * scale)),
+            Margin = new Padding(0, 0, 0, (int)(12 * scale)),
+        };
+
+        TableLayoutPanel tblInput = new()
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            ColumnCount = 2,
+            RowCount = 2,
+        };
+        tblInput.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, (int)(220 * scale)));
+        tblInput.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+
+        // Win/Fn Key Swap
+        Label lblSwapDesc = new()
+        {
+            Text = "Hardware Key Mapping:",
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+            ForeColor = Theme.Text,
+            AutoSize = true,
+            Margin = new Padding((int)(2 * scale), (int)(6 * scale), (int)(8 * scale), (int)(6 * scale)),
+        };
+        FlowLayoutPanel flwSwap = new()
+        {
+            AutoSize = true,
+            FlowDirection = FlowDirection.TopDown,
+            Margin = new Padding(0, (int)(2 * scale), 0, (int)(10 * scale)),
+        };
+        chkWinFnSwap.Text = "Swap Fn and Windows Keys (Hardware EC level)";
+        chkWinFnSwap.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
+        chkWinFnSwap.AutoSize = true;
+        Label lblSwapHint = new()
+        {
+            Text = "Swaps physical Fn and Win key functionality in the EC, preventing accidental Windows key presses while gaming.",
+            Font = new Font("Segoe UI", 8.2F, FontStyle.Regular),
+            ForeColor = Theme.TextMuted,
+            AutoSize = true,
+            Margin = new Padding((int)(2 * scale), (int)(2 * scale), 0, 0),
+        };
+        flwSwap.Controls.Add(chkWinFnSwap);
+        flwSwap.Controls.Add(lblSwapHint);
+
+        tblInput.Controls.Add(lblSwapDesc, 0, 0);
+        tblInput.Controls.Add(flwSwap, 1, 0);
+
+        // Keyboard Backlight
+        Label lblKbDesc = new()
+        {
+            Text = "Keyboard Backlight:",
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+            ForeColor = Theme.Text,
+            AutoSize = true,
+            Margin = new Padding((int)(2 * scale), (int)(8 * scale), (int)(8 * scale), (int)(6 * scale)),
+        };
+
+        FlowLayoutPanel flwLight = new()
+        {
+            AutoSize = true,
+            FlowDirection = FlowDirection.LeftToRight,
+            Margin = new Padding(0, (int)(4 * scale), 0, (int)(6 * scale)),
+        };
+        tbKeyLight.Width = (int)(180 * scale);
+        tbKeyLight.Margin = new Padding(0, 0, (int)(8 * scale), 0);
+        tbKeyLight.TickStyle = TickStyle.Both;
+
+        lblKeyLightLow.Text = "Off";
+        lblKeyLightLow.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
+        lblKeyLightLow.Margin = new Padding(0, (int)(12 * scale), (int)(6 * scale), 0);
+
+        lblKeyLightHigh.Text = "Max";
+        lblKeyLightHigh.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
+        lblKeyLightHigh.Margin = new Padding((int)(6 * scale), (int)(12 * scale), 0, 0);
+
+        flwLight.Controls.Add(lblKeyLightLow);
+        flwLight.Controls.Add(tbKeyLight);
+        flwLight.Controls.Add(lblKeyLightHigh);
+
+        tblInput.Controls.Add(lblKbDesc, 0, 1);
+        tblInput.Controls.Add(flwLight, 1, 1);
+
+        gbInput.Controls.Add(tblInput);
+        mainLayout.Controls.Add(gbInput, 0, 1);
+
+        // =====================================================================
+        // CARD 3: SYSTEM POWER & ADVANCED EC
+        // =====================================================================
+        GroupBox gbPower = new()
+        {
+            Text = "  ⚡ SYSTEM POWER & ADVANCED EC  ",
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
+            ForeColor = Theme.Accent,
+            Padding = new Padding((int)(14 * scale), (int)(12 * scale), (int)(14 * scale), (int)(14 * scale)),
+            Margin = new Padding(0, 0, 0, (int)(12 * scale)),
+        };
+
+        TableLayoutPanel tblPower = new()
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            ColumnCount = 2,
+            RowCount = 2,
+        };
+        tblPower.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, (int)(220 * scale)));
+        tblPower.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+
+        Label lblPwrDesc = new()
+        {
+            Text = "Global Power Profile:",
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+            ForeColor = Theme.Text,
+            AutoSize = true,
+            Margin = new Padding((int)(2 * scale), (int)(6 * scale), (int)(8 * scale), (int)(6 * scale)),
+        };
+        cboPerfMode.Width = (int)(220 * scale);
+        cboPerfMode.Margin = new Padding(0, (int)(4 * scale), 0, (int)(8 * scale));
+
+        tblPower.Controls.Add(lblPwrDesc, 0, 0);
+        tblPower.Controls.Add(cboPerfMode, 1, 0);
+
+        Label lblFanAdvDesc = new()
+        {
+            Text = "EC Operating Mode (Advanced):",
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+            ForeColor = Theme.Text,
+            AutoSize = true,
+            Margin = new Padding((int)(2 * scale), (int)(6 * scale), (int)(8 * scale), (int)(6 * scale)),
+        };
+
+        cboFanMode.Width = (int)(220 * scale);
+        cboFanMode.Margin = new Padding(0, (int)(4 * scale), 0, (int)(4 * scale));
+
+        tblPower.Controls.Add(lblFanAdvDesc, 0, 1);
+        tblPower.Controls.Add(cboFanMode, 1, 1);
+
+        gbPower.Controls.Add(tblPower);
+        mainLayout.Controls.Add(gbPower, 0, 2);
+
+        page.Controls.Add(mainLayout);
+        Theme.ApplyTo(page);
     }
 
     /// <summary>
@@ -1661,7 +2021,7 @@ internal sealed partial class MainForm : Form
     }
     #endregion
 
-    private static Label FanCurveLabel(string text, float scale, int tabIdx, ContentAlignment align = ContentAlignment.MiddleRight)
+    private static Label FanCurveLabel(string text, float scale, int tabIdx, ContentAlignment align = ContentAlignment.MiddleRight, Color? foreColor = null)
     {
         Label lbl = new()
         {
@@ -1676,6 +2036,10 @@ internal sealed partial class MainForm : Form
         };
         // created after Theme.Apply() ran, so theme it here
         Theme.ApplyTo(lbl);
+        if (foreColor.HasValue)
+        {
+            lbl.ForeColor = foreColor.Value;
+        }
         return lbl;
     }
 
@@ -1684,10 +2048,12 @@ internal sealed partial class MainForm : Form
         NumericUpDown nud = new()
         {
             Dock = DockStyle.Fill,
-            Height = (int)(23 * scale),
+            Height = (int)(24 * scale),
             Margin = new Padding((int)(3 * scale)),
             TabIndex = tabIdx,
             Tag = tag,
+            TextAlign = HorizontalAlignment.Center,
+            Font = new Font("Segoe UI", 9F, FontStyle.Bold),
         };
         nud.KeyDown += new KeyEventHandler(NUDKeyDown);
         // the fan curve controls are built long after Theme.Apply() ran in the
