@@ -99,8 +99,8 @@ internal sealed partial class MainForm : Form
     #endregion
     #endregion
 
-    /// <summary>Requested by --overlay / --osd, applied once the form loads.</summary>
-    private readonly bool StartOverlay, StartOsd;
+    /// <summary>Requested by --overlay / --osd / --minimized, applied once the form loads.</summary>
+    private readonly bool StartOverlay, StartOsd, StartMinimized;
 
     #region System Tray
     private NotifyIcon notifyIcon;
@@ -111,12 +111,13 @@ internal sealed partial class MainForm : Form
     private bool hasShownTrayBalloon;
     #endregion
 
-    public MainForm() : this(false, false) { }
+    public MainForm() : this(false, false, false) { }
 
-    public MainForm(bool startOverlay, bool startOsd)
+    public MainForm(bool startOverlay, bool startOsd, bool startMinimized = false)
     {
         StartOverlay = startOverlay;
         StartOsd = startOsd;
+        StartMinimized = startMinimized;
 
         InitializeComponent();
 
@@ -234,8 +235,16 @@ internal sealed partial class MainForm : Form
 
         ProgressDialog<bool> dlg = new()
         {
-            Caption = "Connecting to MSI GF63 Tuner service...",
-            DoWork = () => !IPCClient.WaitForConnection(5000)
+            Caption = "Connecting to MSI GF63 Tuner engine...",
+            DoWork = () =>
+            {
+                if (!IPCClient.WaitForConnection(2000))
+                {
+                    Program.StartEmbeddedService();
+                    return !IPCClient.WaitForConnection(4000);
+                }
+                return false;
+            }
         };
         dlg.ShowDialog();
 
@@ -253,6 +262,13 @@ internal sealed partial class MainForm : Form
         // honour the startup switches now the form is live
         if (StartOverlay) { tsiOverlay.Checked = true; }
         if (StartOsd) { tsiOsd.Checked = true; }
+        if (StartMinimized)
+        {
+            BeginInvoke(new Action(() =>
+            {
+                HideToTray();
+            }));
+        }
 
         switch (CommonConfig.GetECtoConfState())
         {
@@ -318,6 +334,7 @@ internal sealed partial class MainForm : Form
         // Service before exiting the program:
         tmrPoll.Stop();
         IPCClient.Stop();
+        Program.StopEmbeddedService();
     }
 
     private void IPCMessage(object sender, PipeMessageEventArgs<ServiceResponse, ServiceCommand> e)
@@ -692,22 +709,31 @@ internal sealed partial class MainForm : Form
             IPCClient.Stop();
             Hide();
 
-            ProgressDialog<bool> dlg = new()
+            if (Program.EmbeddedService != null)
             {
-                Caption = Strings.GetString("dlgSvcStopping"),
-                DoWork = static () =>
+                Program.StopEmbeddedService();
+                Utils.ShowInfo(Strings.GetString("dlgSvcStopped"), "Success");
+            }
+            else if (Utils.ServiceExists("yamdccsvc"))
+            {
+                ProgressDialog<bool> dlg = new()
                 {
-                    if (!Utils.StopService("yamdccsvc"))
+                    Caption = Strings.GetString("dlgSvcStopping"),
+                    DoWork = static () =>
                     {
-                        Utils.ShowError(Strings.GetString("dlgSvcStopErr"));
-                        return false;
+                        if (!Utils.StopService("yamdccsvc"))
+                        {
+                            Utils.ShowError(Strings.GetString("dlgSvcStopErr"));
+                            return false;
+                        }
+                        Utils.ShowInfo(Strings.GetString("dlgSvcStopped"), "Success");
+                        return true;
                     }
-                    Utils.ShowInfo(Strings.GetString("dlgSvcStopped"), "Success");
-                    return true;
-                }
-            };
-            dlg.ShowDialog();
+                };
+                dlg.ShowDialog();
+            }
 
+            allowExplicitExit = true;
             Close();
         }
     }
@@ -725,22 +751,28 @@ internal sealed partial class MainForm : Form
             IPCClient.Stop();
             Hide();
 
+            if (Program.EmbeddedService != null)
+            {
+                Program.StopEmbeddedService();
+            }
+
             ProgressDialog<bool> dlg = new()
             {
                 Caption = Strings.GetString("dlgSvcUninstalling"),
                 DoWork = () =>
                 {
-                    // Apparently this fixes the YAMDCC service not uninstalling
-                    // when YAMDCC is launched by certain means
-                    if (!Utils.StopService("yamdccsvc"))
+                    if (Utils.ServiceExists("yamdccsvc"))
                     {
-                        Utils.ShowError(Strings.GetString("dlgSvcStopErr"));
-                        return false;
-                    }
-                    if (!Utils.UninstallService("yamdccsvc"))
-                    {
-                        Utils.ShowError(Strings.GetString("dlgUninstallErr"));
-                        return false;
+                        if (!Utils.StopService("yamdccsvc"))
+                        {
+                            Utils.ShowError(Strings.GetString("dlgSvcStopErr"));
+                            return false;
+                        }
+                        if (!Utils.UninstallService("yamdccsvc"))
+                        {
+                            Utils.ShowError(Strings.GetString("dlgUninstallErr"));
+                            return false;
+                        }
                     }
 
                     // Delete the auto-update scheduled task
@@ -770,6 +802,7 @@ internal sealed partial class MainForm : Form
                 }
             };
             dlg.ShowDialog();
+            allowExplicitExit = true;
             Close();
         }
     }

@@ -151,6 +151,12 @@
           "System.Resources.Extensions": "[9.0.0, )"
         }
       },
+      "yamdcc.ecaccess": {
+        "type": "Project",
+        "dependencies": {
+          "System.Resources.Extensions": "[9.0.0, )"
+        }
+      },
       "yamdcc.ipc": {
         "type": "Project",
         "dependencies": {

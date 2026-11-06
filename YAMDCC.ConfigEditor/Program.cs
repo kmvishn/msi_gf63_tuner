@@ -28,17 +28,70 @@ using System.Windows.Forms;
 using YAMDCC.Common;
 using YAMDCC.Common.Configs;
 using YAMDCC.Common.Dialogs;
+using YAMDCC.Common.Logs;
+
+#nullable enable
 
 namespace YAMDCC.ConfigEditor;
 
 internal static class Program
 {
+    public static YAMDCC.Service.FanControlService? EmbeddedService { get; private set; }
+
+    private static Logger CreateLogger()
+    {
+        return new Logger
+        {
+            LogDir = Paths.Logs,
+            ConsoleLevel = LogLevel.None,
+            FileLevel = CommonConfig.GetLogLevel(),
+        };
+    }
+
+    public static void StartEmbeddedService()
+    {
+        if (EmbeddedService == null)
+        {
+            try
+            {
+                Logger svcLog = CreateLogger();
+                EmbeddedService = new YAMDCC.Service.FanControlService(svcLog);
+                EmbeddedService.StartInProcess();
+            }
+            catch (Exception ex)
+            {
+                Utils.ShowError("Failed to initialize embedded fan control engine:\n\n" + ex.Message);
+            }
+        }
+    }
+
+    public static void StopEmbeddedService()
+    {
+        try
+        {
+            EmbeddedService?.StopInProcess();
+            EmbeddedService = null;
+        }
+        catch { }
+    }
+
     /// <summary>
     /// The main entry point for the application.
     /// </summary>
     [STAThread]
     private static void Main(string[] args)
     {
+        // Support running as standalone Windows Service if requested via flag
+        if (args != null && args.Length > 0 &&
+            (args[0].Equals("--service", StringComparison.OrdinalIgnoreCase) ||
+             args[0].Equals("-s", StringComparison.OrdinalIgnoreCase) ||
+             args[0].Equals("/service", StringComparison.OrdinalIgnoreCase)))
+        {
+            Logger svcLog = CreateLogger();
+            ServiceBase.Run(new YAMDCC.Service.FanControlService(svcLog));
+            return;
+        }
+
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
 
@@ -98,97 +151,13 @@ internal static class Program
                     }
                 }
 
-                // Check for the YAMDCC service's existence, and
-                // prompt to start or install it if required.
-                if (!Utils.ServiceExists("yamdccsvc"))
+                // If an external service is not already running, start the embedded fan control service directly in-process
+                if (!Utils.ServiceRunning("yamdccsvc") && !Utils.ServiceRunning("msi_gf63_tuner"))
                 {
-                    if (File.Exists("yamdccsvc.exe"))
-                    {
-                        if (Utils.ShowInfo(
-                            Strings.GetString("dlgSvcNotInstalled"), "Service not installed",
-                            MessageBoxButtons.YesNo) == DialogResult.Yes)
-                        {
-                            ProgressDialog<bool> dlg = new()
-                            {
-                                Caption = Strings.GetString("dlgSvcInstalling"),
-                                DoWork = () =>
-                                {
-                                    if (Utils.InstallService("yamdccsvc"))
-                                    {
-                                        if (Utils.StartService("yamdccsvc"))
-                                        {
-                                            return true;
-                                        }
-                                        else
-                                        {
-                                            Utils.ShowError(Strings.GetString("dlgSvcStartCrash"));
-                                        }
-                                    }
-                                    else
-                                    {
-                                        Utils.ShowError(Strings.GetString("dlgSvcInstallFail"));
-                                    }
-                                    return false;
-                                }
-                            };
-                            dlg.ShowDialog();
-
-                            if (dlg.Result)
-                            {
-                                // Start the program when the service finishes starting:
-                                Start(args);
-                            }
-                        }
-                        return;
-                    }
-                    else
-                    {
-                        Utils.ShowError(Strings.GetString("dlgSvcNotFound"));
-                        return;
-                    }
+                    StartEmbeddedService();
                 }
 
-                // Check if the service is stopped:
-                using (ServiceController yamdccSvc = new("yamdccsvc"))
-                {
-                    ServiceControllerStatus status = yamdccSvc.Status;
-                    if (status == ServiceControllerStatus.Stopped)
-                    {
-                        if (Utils.ShowInfo(
-                            Strings.GetString("dlgSvcNotRunning"), "Service not running",
-                            MessageBoxButtons.YesNo) == DialogResult.Yes)
-                        {
-                            ProgressDialog<bool> dlg = new()
-                            {
-                                Caption = Strings.GetString("dlgSvcStarting"),
-                                DoWork = () =>
-                                {
-                                    if (Utils.StartService("yamdccsvc"))
-                                    {
-                                        return false;
-                                    }
-                                    else
-                                    {
-                                        Utils.ShowError(Strings.GetString("dlgSvcStartCrash"));
-                                        return true;
-                                    }
-                                }
-                            };
-                            dlg.ShowDialog();
-
-                            if (dlg.Result)
-                            {
-                                return;
-                            }
-                        }
-                        else
-                        {
-                            return;
-                        }
-                    }
-                }
-
-                // Start the program when the service finishes starting:
+                // Start the program:
                 Start(args);
             }
             else
@@ -227,16 +196,16 @@ internal static class Program
             }
         }
 
-        // --overlay / --osd turn the readouts on at startup, so a shortcut
-        // can launch straight into them without visiting the menu
-        bool overlay = false, osd = false;
+        // --overlay / --osd / --minimized startup options
+        bool overlay = false, osd = false, minimized = false;
         foreach (string a in args ?? [])
         {
             string arg = a.TrimStart('-', '/').ToLowerInvariant();
             if (arg == "overlay") { overlay = true; }
             else if (arg == "osd") { osd = true; }
+            else if (arg is "minimized" or "tray" or "min" or "m") { minimized = true; }
         }
-        Application.Run(new MainForm(overlay, osd));
+        Application.Run(new MainForm(overlay, osd, minimized));
     }
 
     [DllImport("User32")]

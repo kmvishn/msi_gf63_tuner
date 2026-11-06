@@ -91,6 +91,16 @@ internal sealed class FanControlService : ServiceBase
         IPCServer.Error += new EventHandler<PipeErrorEventArgs<ServiceCommand, ServiceResponse>>(IPCServerError);
     }
 
+    public void StartInProcess()
+    {
+        OnStart(Array.Empty<string>());
+    }
+
+    public void StopInProcess()
+    {
+        OnStop();
+    }
+
     #region Events
     protected override void OnStart(string[] args)
     {

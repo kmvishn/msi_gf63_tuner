@@ -15,6 +15,7 @@
         <None Include="MainForm.resx" />
     </ItemGroup>
     <ItemGroup>
+        <Reference Include="System.Management" />
         <Reference Include="System.ServiceProcess" />
     </ItemGroup>
     <ItemGroup>
@@ -22,7 +23,19 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\YAMDCC.Common\YAMDCC.Common.csproj" />
+        <ProjectReference Include="..\YAMDCC.ECAccess\YAMDCC.ECAccess.csproj" />
         <ProjectReference Include="..\YAMDCC.IPC\YAMDCC.IPC.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <Compile Include="..\YAMDCC.Service\FanControlService.cs" Link="Service\FanControlService.cs" />
+        <Compile Include="..\YAMDCC.Service\SystemControl.cs" Link="Service\SystemControl.cs" />
+        <Compile Include="..\YAMDCC.Service\FanControllers\IFanController.cs" Link="Service\FanControllers\IFanController.cs" />
+        <Compile Include="..\YAMDCC.Service\FanControllers\Ring0FanController.cs" Link="Service\FanControllers\Ring0FanController.cs" />
+        <Compile Include="..\YAMDCC.Service\FanControllers\Wmi2FanController.cs" Link="Service\FanControllers\Wmi2FanController.cs" />
+        <Compile Include="..\YAMDCC.Service\Strings.cs" Link="Service\Strings.cs" />
+        <EmbeddedResource Include="..\YAMDCC.Service\Strings.resx" Link="Service\Strings.resx">
+            <ManifestResourceName>YAMDCC.Service.Strings</ManifestResourceName>
+        </EmbeddedResource>
     </ItemGroup>
     <ItemGroup>
       <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.48">
