@@ -135,9 +135,8 @@ internal sealed partial class MainForm : Form
         UnifyProfileControls();
         AddOverlayMenuItem();
 
-        // Set the window icon using the application icon.
-        // Saves about 8-9 KB from not having to embed the same icon twice.
-        Icon = Utils.GetEntryAssemblyIcon();
+        // Set the window and taskbar icon directly from embedded red dragon icon
+        Icon = LoadEmbeddedAppIcon();
 
         // set title text to include program version
         Text = $"MSI GF63 Tuner v{Utils.GetVerString()}";
@@ -828,6 +827,27 @@ internal sealed partial class MainForm : Form
     #endregion
 
     #endregion
+
+    private static Icon LoadEmbeddedAppIcon()
+    {
+        try
+        {
+            var asm = System.Reflection.Assembly.GetExecutingAssembly();
+            foreach (string res in asm.GetManifestResourceNames())
+            {
+                if (res.EndsWith("fan.ico", StringComparison.OrdinalIgnoreCase))
+                {
+                    using Stream s = asm.GetManifestResourceStream(res);
+                    if (s != null)
+                    {
+                        return new Icon(s);
+                    }
+                }
+            }
+        }
+        catch { }
+        return Utils.GetEntryAssemblyIcon();
+    }
 
     private void UpdateFanSelButton()
     {

@@ -75,12 +75,21 @@ internal static class Program
         catch { }
     }
 
+    [DllImport("shell32.dll", SetLastError = true)]
+    private static extern int SetCurrentProcessExplicitAppUserModelID([MarshalAs(UnmanagedType.LPWStr)] string AppID);
+
     /// <summary>
     /// The main entry point for the application.
     /// </summary>
     [STAThread]
     private static void Main(string[] args)
     {
+        try
+        {
+            SetCurrentProcessExplicitAppUserModelID("MSI.GF63Tuner.Suite");
+        }
+        catch { }
+
         // Support running as standalone Windows Service if requested via flag
         if (args != null && args.Length > 0 &&
             (args[0].Equals("--service", StringComparison.OrdinalIgnoreCase) ||

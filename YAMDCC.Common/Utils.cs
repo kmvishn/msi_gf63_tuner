@@ -263,6 +263,32 @@ public static class Utils
 
     public static Icon GetEntryAssemblyIcon()
     {
+        try
+        {
+            Assembly asm = Assembly.GetEntryAssembly();
+            if (asm != null)
+            {
+                foreach (string res in asm.GetManifestResourceNames())
+                {
+                    if (res.EndsWith(".ico", StringComparison.OrdinalIgnoreCase))
+                    {
+                        using System.IO.Stream s = asm.GetManifestResourceStream(res);
+                        if (s != null)
+                        {
+                            return new Icon(s);
+                        }
+                    }
+                }
+
+                string icoPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "fan.ico");
+                if (System.IO.File.Exists(icoPath))
+                {
+                    return new Icon(icoPath);
+                }
+            }
+        }
+        catch { }
+
         return Icon.ExtractAssociatedIcon(Assembly.GetEntryAssembly().Location);
     }
 

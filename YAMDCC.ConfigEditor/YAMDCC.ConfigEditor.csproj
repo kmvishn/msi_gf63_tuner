@@ -19,7 +19,7 @@
         <Reference Include="System.ServiceProcess" />
     </ItemGroup>
     <ItemGroup>
-        <Content Include="fan.ico" />
+        <EmbeddedResource Include="fan.ico" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\YAMDCC.Common\YAMDCC.Common.csproj" />

@@ -77,6 +77,12 @@ if (Test-Path $cfgSrc) {
     Write-Host "  [OK] Installed msi_gf63_tuner.exe.config" -ForegroundColor Green
 }
 
+$icoSrc = Join-Path $sourceBase "YAMDCC.ConfigEditor\fan.ico"
+if (Test-Path $icoSrc) {
+    Copy-Item -Path $icoSrc -Destination (Join-Path $target "fan.ico") -Force
+    Write-Host "  [OK] Installed fan.ico" -ForegroundColor Green
+}
+
 Write-Host "Updating 5-profile unified fan configuration in ProgramData..." -ForegroundColor Cyan
 $profSrc = Join-Path $sourceBase "Configs-V2\MSI-Thin-GF63-12HW.xml"
 $profDst = "C:\ProgramData\Sparronator9999\YAMDCC\CurrentConfigV2.xml"
@@ -114,11 +120,30 @@ try {
     $shortcut.TargetPath = "$target\msi_gf63_tuner.exe"
     $shortcut.WorkingDirectory = $target
     $shortcut.Description = "MSI GF63 Tuner"
+    $shortcut.IconLocation = "$target\fan.ico,0"
     $shortcut.Save()
     Write-Host "  [OK] Desktop shortcut updated: MSI GF63 Tuner.lnk" -ForegroundColor Green
 } catch {
     Write-Host "  [WARN] Could not update desktop shortcut: $_" -ForegroundColor DarkYellow
 }
+
+# Flush Windows Explorer icon cache so the new dragon icon displays immediately on taskbar
+try {
+    $code = @'
+    using System;
+    using System.Runtime.InteropServices;
+    public class ShellIconRefresh {
+        [DllImport("shell32.dll")]
+        public static extern void SHChangeNotify(int wEventId, int uFlags, IntPtr dwItem1, IntPtr dwItem2);
+        public static void Refresh() {
+            SHChangeNotify(0x08000000, 0, IntPtr.Zero, IntPtr.Zero);
+        }
+    }
+'@
+    Add-Type -TypeDefinition $code -ErrorAction SilentlyContinue
+    [ShellIconRefresh]::Refresh()
+    Write-Host "  [OK] Flushed Windows Shell icon cache" -ForegroundColor Green
+} catch {}
 
 Write-Host "Launching standalone MSI GF63 Tuner..." -ForegroundColor Cyan
 Start-Process "$target\msi_gf63_tuner.exe"
