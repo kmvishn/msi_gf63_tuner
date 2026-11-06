@@ -204,7 +204,7 @@ Added for Fortnite.
 | 28b | **Daily apps on Iris Xe (Power saving)** | Binds Antigravity IDE and ConfigEditor to Iris Xe, preventing them from waking or holding VRAM on the Arc dGPU. *(per user)* |
 | 29 | Game Mode on | Already on; now enforced. *(per user)* |
 | 33 | Network throttling off + SystemResponsiveness 0 | Disables Windows NDIS packet throttling (`0xFFFFFFFF`) and dedicates 100% CPU priority to foreground games. |
-| 36 | GameBarPresenceWriter background hook off | Stops `GameBarPresenceWriter.exe` from spawning and injecting into games, eliminating presence polling stutters. |
+| 36 | GameBarPresenceWriter blocked (IFEO) | Stops `GameBarPresenceWriter.exe` from spawning and injecting into games via IFEO redirection, eliminating presence polling stutters. |
 | 37 | TCP immediate ACK & NoDelay (physical adapters) | Disables delayed ACKs and Nagle's buffering algorithm on Wi-Fi and Ethernet for minimal multiplayer packet latency. |
 
 Already helping: Game DVR off `[25]`, memory compression `[15]`, CPU at 100%

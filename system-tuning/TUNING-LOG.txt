@@ -1005,17 +1005,18 @@
  REVERT   Remove-ItemProperty 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU' -Name NoAutoRebootWithLoggedOnUsers -EA 0
 
 -------------------------------------------------------------------------------
- [36] GAMEBARPRESENCEWRITER BACKGROUND HOOK -> OFF          ADDED 2026-11-06
+ [36] GAMEBARPRESENCEWRITER BLOCKED VIA IFEO                ADDED 2026-11-06
 -------------------------------------------------------------------------------
  WHY      Even with Game DVR and Xbox overlay recording turned off, Windows spawns
           GameBarPresenceWriter.exe in the background whenever a game executable
           starts, attempting to query and broadcast presence data to Xbox Live.
-          Setting ActivationType = 0 stops Windows from spawning this process or
-          injecting its COM hooks into game processes, eliminating background
-          micro-stutters and frametime drops in games.
- AFTER    HKLM\SOFTWARE\Microsoft\WindowsRuntime\ActivatableClassId\Windows.Gaming.GameBar.PresenceServer.Internal.PresenceWriter
-            ActivationType = 0
- REVERT   Set-Dword 'HKLM:\SOFTWARE\Microsoft\WindowsRuntime\ActivatableClassId\Windows.Gaming.GameBar.PresenceServer.Internal.PresenceWriter' ActivationType 1
+          Blocking execution via Image File Execution Options (IFEO) Debugger
+          redirection prevents GameBarPresenceWriter.exe from spawning or injecting
+          hooks into game processes without requiring invasive TrustedInstaller
+          registry ownership modifications.
+ AFTER    HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\GameBarPresenceWriter.exe
+            Debugger = "systray.exe"
+ REVERT   Remove-Item 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\GameBarPresenceWriter.exe' -Recurse -EA 0
 
 -------------------------------------------------------------------------------
  [37] TCP GAMING LATENCY: IMMEDIATE ACK & NODELAY           ADDED 2026-11-06

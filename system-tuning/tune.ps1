@@ -113,65 +113,6 @@ function TcpPhysicalInterfaceKeys {
     })
 }
 
-# Helper to take registry ownership when keys are owned by TrustedInstaller
-function Grant-AdminKeyAccess($subPath) {
-    $def = @'
-    using System;
-    using System.Runtime.InteropServices;
-    public class RegPrivs {
-        [DllImport("advapi32.dll", ExactSpelling = true, SetLastError = true)]
-        public static extern bool OpenProcessToken(IntPtr h, int acc, ref IntPtr phtok);
-        [DllImport("advapi32.dll", SetLastError = true)]
-        public static extern bool LookupPrivilegeValue(string host, string name, ref long pluid);
-        [DllImport("advapi32.dll", ExactSpelling = true, SetLastError = true)]
-        public static extern bool AdjustTokenPrivileges(IntPtr htok, bool disall, ref TokPriv1Luid newst, int len, IntPtr prev, IntPtr rele);
-        [StructLayout(LayoutKind.Sequential, Pack = 1)]
-        public struct TokPriv1Luid {
-            public int Count;
-            public long Luid;
-            public int Attr;
-        }
-        public static bool EnablePrivilege(string privilege) {
-            IntPtr hproc = System.Diagnostics.Process.GetCurrentProcess().Handle;
-            IntPtr htok = IntPtr.Zero;
-            if (!OpenProcessToken(hproc, 0x0020 | 0x0008, ref htok)) return false;
-            TokPriv1Luid tp = new TokPriv1Luid { Count = 1, Luid = 0, Attr = 0x00000002 };
-            if (!LookupPrivilegeValue(null, privilege, ref tp.Luid)) return false;
-            return AdjustTokenPrivileges(htok, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero);
-        }
-    }
-'@
-    Add-Type -TypeDefinition $def -ErrorAction SilentlyContinue
-    [RegPrivs]::EnablePrivilege("SeTakeOwnershipPrivilege") | Out-Null
-    [RegPrivs]::EnablePrivilege("SeRestorePrivilege") | Out-Null
-
-    try {
-        $key = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
-            $subPath,
-            [System.Security.AccessControl.RegistryRights]::TakeOwnership
-        )
-        if ($key) {
-            $acl = $key.GetAccessControl([System.Security.AccessControl.AccessControlSections]::None)
-            $admin = New-Object System.Security.Principal.NTAccount("Administrators")
-            $acl.SetOwner($admin)
-            $key.SetAccessControl($acl)
-            $key.Close()
-
-            $key = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey(
-                $subPath,
-                [System.Security.AccessControl.RegistryRights]::ChangePermissions
-            )
-            if ($key) {
-                $acl = $key.GetAccessControl()
-                $rule = New-Object System.Security.AccessControl.RegistryAccessRule($admin, "FullControl", "Allow")
-                $acl.SetAccessRule($rule)
-                $key.SetAccessControl($acl)
-                $key.Close()
-            }
-        }
-    } catch { }
-}
-
 # =============================================================================
 #  Item registry
 #  Id      : TUNING-LOG item number (several entries may share one id)
@@ -671,19 +612,17 @@ Add-Item 33 gaming 'Network throttling off + SystemResponsiveness 0' {
     Set-Dword $k SystemResponsiveness 0
 }
 
-# [36] GameBarPresenceWriter background hook disabled.
-#      WHY: stops GameBarPresenceWriter.exe from spawning and injecting into games
-#           when GameDVR is off, eliminating background presence micro-stutters.
-#      REVERT: Set-Dword 'HKLM:\SOFTWARE\Microsoft\WindowsRuntime\ActivatableClassId\Windows.Gaming.GameBar.PresenceServer.Internal.PresenceWriter' ActivationType 1
-$PresenceKey = 'HKLM:\SOFTWARE\Microsoft\WindowsRuntime\ActivatableClassId\Windows.Gaming.GameBar.PresenceServer.Internal.PresenceWriter'
-$PresenceSub = 'SOFTWARE\Microsoft\WindowsRuntime\ActivatableClassId\Windows.Gaming.GameBar.PresenceServer.Internal.PresenceWriter'
-Add-Item 36 gaming 'GameBarPresenceWriter background hook off' {
-    if (-not (Test-Path $PresenceKey)) { return SkipRes 'PresenceWriter key not found' }
-    $v = RegVal $PresenceKey ActivationType
-    Res ($v -eq 0 -and $null -ne $v) $v
+# [36] GameBarPresenceWriter execution blocked (IFEO).
+#      WHY: stops GameBarPresenceWriter.exe from spawning and injecting into games,
+#           eliminating background presence micro-stutters.
+#      REVERT: Remove-Item 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\GameBarPresenceWriter.exe' -Recurse -EA 0
+$PresenceIfeo = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\GameBarPresenceWriter.exe'
+Add-Item 36 gaming 'GameBarPresenceWriter blocked (IFEO)' {
+    $v = RegVal $PresenceIfeo Debugger
+    Res ($v -match 'systray\.exe') $v
 } {
-    Grant-AdminKeyAccess $PresenceSub
-    Set-Dword $PresenceKey ActivationType 0
+    Ensure-Key $PresenceIfeo
+    Set-ItemProperty $PresenceIfeo -Name Debugger -Value 'systray.exe' -Type String
 }
 
 # [37] TCP gaming latency: Immediate ACK & TCPNoDelay on physical adapters.
