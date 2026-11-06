@@ -132,6 +132,7 @@ internal sealed partial class MainForm : Form
         BuildMonitoringTab();
         SetupModernExtrasTab();
         UpdateFanSelButton();
+        UnifyProfileControls();
         AddOverlayMenuItem();
 
         // Set the window icon using the application icon.
@@ -846,6 +847,19 @@ internal sealed partial class MainForm : Form
         }
     }
 
+    private void UnifyProfileControls()
+    {
+        Control lblPerf = tblFanControl?.GetControlFromPosition(5, 0);
+        if (lblPerf != null) lblPerf.Visible = false;
+        if (cboProfPerfMode != null) cboProfPerfMode.Visible = false;
+        if (cboProfSel != null)
+        {
+            float scale = CurrentAutoScaleDimensions.Height / 96f;
+            cboProfSel.Width = (int)(250 * scale);
+            cboProfSel.DropDownWidth = (int)(280 * scale);
+        }
+    }
+
     private void FanSelChange(object sender, EventArgs e)
     {
         GPUFan = !GPUFan;
@@ -986,14 +1000,21 @@ internal sealed partial class MainForm : Form
             ProfileOsdToast.ShowToast(curveCfg.Name);
         }
 
-        cboProfPerfMode.SelectedIndex = (int)Config.CpuFan
-            .FanProfs[cfg.ProfSel].PerfMode + 1;
+        int targetPerfIdx = (int)Config.CpuFan.FanProfs[cfg.ProfSel].PerfMode + 1;
+        if (targetPerfIdx >= 0 && targetPerfIdx < cboProfPerfMode.Items.Count)
+        {
+            cboProfPerfMode.SelectedIndex = targetPerfIdx;
+        }
         cboProfPerfMode.Enabled = true;
 
         if (curveCfg.PerfMode != PerfMode.Default)
         {
             Config.PerfMode = curveCfg.PerfMode;
-            cboPerfMode.SelectedIndex = (int)curveCfg.PerfMode;
+            int modeIdx = (int)curveCfg.PerfMode;
+            if (modeIdx >= 0 && modeIdx < cboPerfMode.Items.Count)
+            {
+                cboPerfMode.SelectedIndex = modeIdx;
+            }
         }
 
         bool enable = true;
@@ -1022,7 +1043,7 @@ internal sealed partial class MainForm : Form
     private void ProfPerfModeChanged(object sender, EventArgs e)
     {
         int perfIdx = cboProfPerfMode.SelectedIndex;
-        if (cboProfSel.SelectedIndex >= 0 && cboProfSel.SelectedIndex < Config.CpuFan.FanProfs.Count)
+        if (perfIdx >= 0 && cboProfSel.SelectedIndex >= 0 && cboProfSel.SelectedIndex < Config.CpuFan.FanProfs.Count)
         {
             PerfMode mode = (PerfMode)(perfIdx - 1);
             Config.CpuFan.FanProfs[cboProfSel.SelectedIndex].PerfMode = mode;
@@ -1033,7 +1054,11 @@ internal sealed partial class MainForm : Form
             if (mode != PerfMode.Default)
             {
                 Config.PerfMode = mode;
-                cboPerfMode.SelectedIndex = (int)mode;
+                int modeIdx = (int)mode;
+                if (modeIdx >= 0 && modeIdx < cboPerfMode.Items.Count)
+                {
+                    cboPerfMode.SelectedIndex = modeIdx;
+                }
             }
         }
 
@@ -1368,10 +1393,9 @@ internal sealed partial class MainForm : Form
         cboPerfMode.Items.Clear();
         cboProfPerfMode.Items.Clear();
 
+        cboProfPerfMode.Items.Add($"Default ({Config.PerfMode})");
         foreach (PerfMode pMode in Enum.GetValues(typeof(PerfMode)))
         {
-            cboProfPerfMode.Items.Add($"Default ({Config.PerfMode})");
-
             if (pMode != PerfMode.Default)
             {
                 cboPerfMode.Items.Add(pMode);
@@ -1379,7 +1403,11 @@ internal sealed partial class MainForm : Form
             }
         }
 
-        cboPerfMode.SelectedIndex = (int)Config.PerfMode;
+        int currPerf = (int)Config.PerfMode;
+        if (currPerf >= 0 && currPerf < cboPerfMode.Items.Count)
+        {
+            cboPerfMode.SelectedIndex = currPerf;
+        }
         cboPerfMode.Enabled = true;
 
         cboFanMode.Items.Clear();
@@ -1563,10 +1591,9 @@ internal sealed partial class MainForm : Form
             AutoScroll = true,
             Padding = new Padding((int)(14 * scale), (int)(10 * scale), (int)(14 * scale), (int)(10 * scale)),
             ColumnCount = 1,
-            RowCount = 3,
+            RowCount = 2,
         };
         mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
@@ -1838,9 +1865,6 @@ internal sealed partial class MainForm : Form
 
         tblPower.Controls.Add(lblFanAdvDesc, 0, 1);
         tblPower.Controls.Add(cboFanMode, 1, 1);
-
-        gbPower.Controls.Add(tblPower);
-        mainLayout.Controls.Add(gbPower, 0, 2);
 
         page.Controls.Add(mainLayout);
         Theme.ApplyTo(page);
