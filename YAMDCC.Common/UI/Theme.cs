@@ -32,44 +32,53 @@ namespace YAMDCC.Common.UI;
 public static class Theme
 {
     #region Palette
-    /// <summary>Form background. Deep obsidian carbon black matching the MSI chassis.</summary>
-    public static readonly Color Background = Color.FromArgb(0x0C, 0x0C, 0x0F);
+    /// <summary>Form background. Deep stealth cyber carbon black.</summary>
+    public static readonly Color Background = Color.FromArgb(0x08, 0x0A, 0x0E);
 
-    /// <summary>Panels, tab pages and other raised areas.</summary>
-    public static readonly Color Surface = Color.FromArgb(0x15, 0x15, 0x1B);
+    /// <summary>Panels, tab pages and other raised areas. Tech cyber deck surface.</summary>
+    public static readonly Color Surface = Color.FromArgb(0x0F, 0x12, 0x1A);
 
-    /// <summary>Text boxes, combo boxes and other input fields.</summary>
-    public static readonly Color SurfaceAlt = Color.FromArgb(0x1C, 0x1C, 0x24);
+    /// <summary>Text boxes, combo boxes and other input fields. Recessed cyber module.</summary>
+    public static readonly Color SurfaceAlt = Color.FromArgb(0x16, 0x1B, 0x24);
 
     /// <summary>Hovered menu/list rows and controls.</summary>
-    public static readonly Color SurfaceHover = Color.FromArgb(0x28, 0x1E, 0x24);
+    public static readonly Color SurfaceHover = Color.FromArgb(0x22, 0x2A, 0x38);
 
-    /// <summary>Subtle dark crimson borders matching the MSI chassis bevels.</summary>
-    public static readonly Color Border = Color.FromArgb(0x38, 0x18, 0x20);
+    /// <summary>Subtle tech perimeter border.</summary>
+    public static readonly Color Border = Color.FromArgb(0x26, 0x2F, 0x3E);
 
-    /// <summary>Brighter crimson border for active or hovered boundaries.</summary>
-    public static readonly Color BorderBright = Color.FromArgb(0x6A, 0x22, 0x2E);
+    /// <summary>Brighter cyber laser border for active boundaries.</summary>
+    public static readonly Color BorderBright = Color.FromArgb(0x44, 0x54, 0x6E);
 
-    /// <summary>Crisp high-contrast ice-white text.</summary>
-    public static readonly Color Text = Color.FromArgb(0xF2, 0xF3, 0xF5);
+    /// <summary>Crisp high-contrast diamond-white text.</summary>
+    public static readonly Color Text = Color.FromArgb(0xF2, 0xF5, 0xFA);
 
-    /// <summary>Secondary/dimmed text in gunmetal slate.</summary>
-    public static readonly Color TextMuted = Color.FromArgb(0x9E, 0x94, 0x9A);
+    /// <summary>Secondary/dimmed text in tech gunmetal slate.</summary>
+    public static readonly Color TextMuted = Color.FromArgb(0x76, 0x85, 0x98);
 
     /// <summary>Text on a disabled control.</summary>
-    public static readonly Color TextDisabled = Color.FromArgb(0x52, 0x48, 0x4E);
+    public static readonly Color TextDisabled = Color.FromArgb(0x40, 0x48, 0x54);
 
-    /// <summary>MSI Neon Red. Used for selection, focus, and intense gaming emphasis.</summary>
-    public static readonly Color Accent = Color.FromArgb(0xFF, 0x1A, 0x3C);
+    /// <summary>Cyberpunk Neon Red / Arasaka Crimson. Selection and high-performance emphasis.</summary>
+    public static readonly Color Accent = Color.FromArgb(0xFF, 0x00, 0x3C);
 
     /// <summary>Lighter neon red for hover states and luminous glow.</summary>
-    public static readonly Color AccentHover = Color.FromArgb(0xFF, 0x3D, 0x5C);
+    public static readonly Color AccentHover = Color.FromArgb(0xFF, 0x2E, 0x5B);
 
     /// <summary>Darker red for pressed states.</summary>
-    public static readonly Color AccentPressed = Color.FromArgb(0xD1, 0x00, 0x26);
+    public static readonly Color AccentPressed = Color.FromArgb(0xCC, 0x00, 0x30);
 
     /// <summary>Subtle dark red for secondary indicators and accents.</summary>
-    public static readonly Color AccentDim = Color.FromArgb(0x8A, 0x12, 0x24);
+    public static readonly Color AccentDim = Color.FromArgb(0x60, 0x0A, 0x1C);
+
+    /// <summary>Cyberpunk Electric Cyan. Real-time telemetry, CPU sensors, tech data.</summary>
+    public static readonly Color AccentCyan = Color.FromArgb(0x00, 0xF0, 0xFF);
+
+    /// <summary>Cyberpunk Neon Amber. GPU telemetry, reactor heat, performance mode.</summary>
+    public static readonly Color AccentAmber = Color.FromArgb(0xFF, 0xB8, 0x00);
+
+    /// <summary>Cyber Bio-Grid Green. Online status, battery ECO efficiency.</summary>
+    public static readonly Color AccentGreen = Color.FromArgb(0x00, 0xFF, 0x66);
     #endregion
 
     #region Dark title bar
@@ -289,13 +298,13 @@ public static class Theme
                     b.FlatAppearance.MouseDownBackColor = AccentPressed;
                     b.Cursor = Cursors.Hand;
 
-                    b.MouseEnter += (s, e) => ((Button)s).FlatAppearance.BorderColor = Accent;
+                    b.MouseEnter += (s, e) => ((Button)s).FlatAppearance.BorderColor = AccentCyan;
                     b.MouseLeave += (s, e) =>
                     {
                         Button btn = (Button)s;
                         if (!btn.Focused) { btn.FlatAppearance.BorderColor = Border; }
                     };
-                    b.GotFocus += (s, e) => ((Button)s).FlatAppearance.BorderColor = Accent;
+                    b.GotFocus += (s, e) => ((Button)s).FlatAppearance.BorderColor = AccentCyan;
                     b.LostFocus += (s, e) => ((Button)s).FlatAppearance.BorderColor = Border;
                 }
                 break;
@@ -413,7 +422,7 @@ public static class Theme
 
             case GroupBox gb:
                 SetTransparentBack(gb);
-                gb.ForeColor = Accent;
+                gb.ForeColor = AccentCyan;
                 break;
 
             default:

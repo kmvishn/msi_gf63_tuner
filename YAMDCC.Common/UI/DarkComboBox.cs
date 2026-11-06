@@ -124,16 +124,25 @@ public sealed class DarkComboBox : ComboBox
             new(cx, cy + 3),
         ];
         bool active = Focused || DroppedDown || _hovered;
-        using (SolidBrush b = new(Enabled ? (active ? Theme.Accent : Theme.Text) : Theme.TextDisabled))
+        Color activeAccent = DroppedDown ? Theme.Accent : (_hovered ? Theme.AccentCyan : Theme.Accent);
+        using (SolidBrush b = new(Enabled ? (active ? activeAccent : Theme.Text) : Theme.TextDisabled))
         {
             g.FillPolygon(b, arrow);
         }
 
         // A flat border in the theme colour, instead of the 3D one.
-        // Two rectangles: the control also paints a 1px white edge one pixel
-        // *inside* its bounds, so covering only inset 0 left a white outline.
-        using Pen p = new(active ? Theme.Accent : Theme.Border);
+        using Pen p = new(active ? activeAccent : Theme.Border);
         g.DrawRectangle(p, 0, 0, Width - 1, Height - 1);
         g.DrawRectangle(p, 1, 1, Width - 3, Height - 3);
+
+        if (active && Enabled)
+        {
+            // Sci-Fi HUD corner bracket accents on top-left and bottom-right
+            using Pen pBracket = new(Theme.Accent, 1.5f);
+            g.DrawLine(pBracket, 0, 0, 5, 0);
+            g.DrawLine(pBracket, 0, 0, 0, 5);
+            g.DrawLine(pBracket, Width - 1, Height - 1, Width - 6, Height - 1);
+            g.DrawLine(pBracket, Width - 1, Height - 1, Width - 1, Height - 6);
+        }
     }
 }

@@ -481,7 +481,7 @@ namespace YAMDCC.ConfigEditor
             tabFC.Name = "tabFC";
             tabFC.Size = new System.Drawing.Size(752, 420);
             tabFC.TabIndex = 0;
-            tabFC.Text = "  ⚡ FAN CONTROL  ";
+            tabFC.Text = "  ⚡ FAN MATRIX  ";
             // 
             // tblFanControl
             // 
@@ -620,7 +620,7 @@ namespace YAMDCC.ConfigEditor
             tabExtra.Name = "tabExtra";
             tabExtra.Size = new System.Drawing.Size(752, 420);
             tabExtra.TabIndex = 1;
-            tabExtra.Text = "  ⚙️ HARDWARE EXTRAS  ";
+            tabExtra.Text = "  ⚙️ HARDWARE MODULES  ";
             // 
             // tblExtra
             // 
@@ -958,7 +958,7 @@ namespace YAMDCC.ConfigEditor
             tabECMon.Padding = new System.Windows.Forms.Padding(3);
             tabECMon.Size = new System.Drawing.Size(752, 420);
             tabECMon.TabIndex = 3;
-            tabECMon.Text = "  📊 LIVE MONITORING  ";
+            tabECMon.Text = "  📊 SENSOR HUD  ";
             tabECMon.UseVisualStyleBackColor = true;
             // 
             // tableLayoutPanel1
@@ -1257,7 +1257,7 @@ namespace YAMDCC.ConfigEditor
             this.tabInfo.Padding = new System.Windows.Forms.Padding(3);
             this.tabInfo.Size = new System.Drawing.Size(752, 420);
             this.tabInfo.TabIndex = 2;
-            this.tabInfo.Text = "  ℹ️ SYSTEM INFO  ";
+            this.tabInfo.Text = "  ℹ️ SYSTEM TELEMETRY  ";
             this.tabInfo.UseVisualStyleBackColor = true;
             // 
             // pnlHeader
@@ -1270,7 +1270,7 @@ namespace YAMDCC.ConfigEditor
             this.lblHeaderProf = new System.Windows.Forms.Label();
             this.lblHeaderGpu = new System.Windows.Forms.Label();
             this.lblHeaderCpu = new System.Windows.Forms.Label();
-            this.pnlHeader.BackColor = System.Drawing.Color.FromArgb(21, 21, 27);
+            this.pnlHeader.BackColor = System.Drawing.Color.FromArgb(8, 10, 14);
             this.pnlHeader.Controls.Add(this.flwHeaderTelemetry);
             this.pnlHeader.Controls.Add(this.lblHeaderSubtitle);
             this.pnlHeader.Controls.Add(this.lblHeaderTitle);
@@ -1279,15 +1279,15 @@ namespace YAMDCC.ConfigEditor
             this.pnlHeader.Location = new System.Drawing.Point(0, 0);
             this.pnlHeader.Margin = new System.Windows.Forms.Padding(0);
             this.pnlHeader.Name = "pnlHeader";
-            this.pnlHeader.Size = new System.Drawing.Size(760, 48);
+            this.pnlHeader.Size = new System.Drawing.Size(760, 52);
             this.pnlHeader.TabIndex = 0;
             // 
             // pnlHeaderStripe
             // 
-            this.pnlHeaderStripe.BackColor = System.Drawing.Color.FromArgb(255, 26, 60);
+            this.pnlHeaderStripe.BackColor = System.Drawing.Color.FromArgb(255, 0, 60);
             this.pnlHeaderStripe.Location = new System.Drawing.Point(8, 7);
             this.pnlHeaderStripe.Name = "pnlHeaderStripe";
-            this.pnlHeaderStripe.Size = new System.Drawing.Size(4, 34);
+            this.pnlHeaderStripe.Size = new System.Drawing.Size(4, 38);
             this.pnlHeaderStripe.TabIndex = 0;
             // 
             // lblHeaderTitle
@@ -1372,11 +1372,11 @@ namespace YAMDCC.ConfigEditor
             this.tblMain.Margin = new System.Windows.Forms.Padding(0);
             this.tblMain.Name = "tblMain";
             this.tblMain.RowCount = 4;
-            this.tblMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 48F));
+            this.tblMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 52F));
             this.tblMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 40F));
+            this.tblMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 42F));
             this.tblMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 20F));
-            this.tblMain.Size = new System.Drawing.Size(760, 536);
+            this.tblMain.Size = new System.Drawing.Size(760, 546);
             this.tblMain.TabIndex = 1;
             // 
             // MainForm
@@ -1385,7 +1385,7 @@ namespace YAMDCC.ConfigEditor
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.CancelButton = this.btnRevert;
-            this.ClientSize = new System.Drawing.Size(760, 560);
+            this.ClientSize = new System.Drawing.Size(760, 570);
             this.Controls.Add(this.tblMain);
             this.Controls.Add(menuStrip);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;

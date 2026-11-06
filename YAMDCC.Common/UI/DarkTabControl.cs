@@ -16,20 +16,15 @@
 
 using System;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
 namespace YAMDCC.Common.UI;
 
 /// <summary>
-/// A <see cref="TabControl"/> that paints its tab strip in the dark theme.
+/// A sleek, futuristic Cyberpunk Sci-Fi <see cref="TabControl"/> that paints
+/// chamfered tactical HUD tabs, glowing laser highlights, and clean cyber aesthetics.
 /// </summary>
-/// <remarks>
-/// Owner-drawing a plain <see cref="TabControl"/> only lets you paint the tabs
-/// themselves: the strip *behind* and beside them is drawn by the Win32 common
-/// control from the system theme, so it stays light grey on a dark form, as do
-/// the raised borders around each tab. Taking over painting entirely is the
-/// only way to get rid of both.
-/// </remarks>
 public sealed class DarkTabControl : TabControl
 {
     private int _hoveredIndex = -1;
@@ -42,11 +37,10 @@ public sealed class DarkTabControl : TabControl
                  ControlStyles.UserPaint, true);
 
         DrawMode = TabDrawMode.OwnerDrawFixed;
-        // flat buttons stops the control reserving space for 3D tab edges
         Appearance = TabAppearance.FlatButtons;
         BackColor = Theme.Background;
         ForeColor = Theme.Text;
-        ItemSize = new Size(160, 34);
+        ItemSize = new Size(175, 36);
         SizeMode = TabSizeMode.Fixed;
     }
 
@@ -86,22 +80,33 @@ public sealed class DarkTabControl : TabControl
         e.Graphics.Clear(Theme.Background);
     }
 
+    private static GraphicsPath GetChamferedTab(Rectangle r, int cut)
+    {
+        GraphicsPath path = new();
+        path.AddLine(r.Left, r.Bottom, r.Left, r.Top + cut);
+        path.AddLine(r.Left + cut, r.Top, r.Right - cut, r.Top);
+        path.AddLine(r.Right, r.Top + cut, r.Right, r.Bottom);
+        path.CloseFigure();
+        return path;
+    }
+
     protected override void OnPaint(PaintEventArgs e)
     {
         Graphics g = e.Graphics;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
         g.Clear(Theme.Background);
 
-        // the page area, so the selected tab appears joined to its page
+        // Active page container background
         Rectangle display = DisplayRectangle;
         using (SolidBrush b = new(Theme.Surface))
         {
             g.FillRectangle(b, display);
         }
 
-        // Draw top border line separating the tab strip from the page area
-        using (Pen pBorder = new(Theme.Border))
+        // Cyberpunk laser rail dividing the tab strip from the page area
+        using (Pen pBorder = new(Theme.Border, 1.5f))
         {
-            g.DrawLine(pBorder, display.Left, display.Top, display.Right, display.Top);
+            g.DrawLine(pBorder, 0, display.Top, Width, display.Top);
         }
 
         for (int i = 0; i < TabCount; i++)
@@ -110,25 +115,56 @@ public sealed class DarkTabControl : TabControl
             bool selected = SelectedIndex == i;
             bool hovered = _hoveredIndex == i;
 
-            Color tabBg = selected ? Theme.Surface : (hovered ? Theme.SurfaceHover : Theme.Background);
-            using (SolidBrush b = new(tabBg))
-            {
-                g.FillRectangle(b, r);
-            }
-
-            // MSI Neon Red underline marks the active tab; subtle crimson for hovered
             if (selected)
             {
-                using SolidBrush accent = new(Theme.Accent);
-                g.FillRectangle(accent, r.Left, r.Bottom - 3, r.Width, 3);
+                // Sci-fi chamfered tab card with subtle cyber gradient
+                Rectangle tabCard = new(r.X + 2, r.Y + 2, r.Width - 4, r.Height);
+                using (GraphicsPath path = GetChamferedTab(tabCard, 6))
+                {
+                    using (LinearGradientBrush lgb = new(tabCard, Color.FromArgb(34, 22, 28), Theme.Surface, LinearGradientMode.Vertical))
+                    {
+                        g.FillPath(lgb, path);
+                    }
+                    using (Pen p = new(Theme.BorderBright, 1.2f))
+                    {
+                        g.DrawPath(p, path);
+                    }
+                }
+
+                // Dual-core glowing neon crimson laser bar at the bottom
+                using (SolidBrush accent = new(Theme.Accent))
+                {
+                    g.FillRectangle(accent, r.Left + 2, r.Bottom - 3, r.Width - 4, 3);
+                }
+                using (SolidBrush core = new(Color.FromArgb(255, 160, 180)))
+                {
+                    g.FillRectangle(core, r.Left + 6, r.Bottom - 3, r.Width - 12, 1);
+                }
             }
             else if (hovered)
             {
-                using SolidBrush glow = new(Theme.AccentDim);
-                g.FillRectangle(glow, r.Left, r.Bottom - 2, r.Width, 2);
+                // Hover highlight with cyber cyan accent
+                Rectangle tabCard = new(r.X + 2, r.Y + 4, r.Width - 4, r.Height - 2);
+                using (GraphicsPath path = GetChamferedTab(tabCard, 5))
+                {
+                    using (SolidBrush b = new(Theme.SurfaceHover))
+                    {
+                        g.FillPath(b, path);
+                    }
+                    using (Pen p = new(Color.FromArgb(90, Theme.AccentCyan), 1f))
+                    {
+                        g.DrawPath(p, path);
+                    }
+                }
+
+                // Electric cyan indicator
+                using (SolidBrush glow = new(Theme.AccentCyan))
+                {
+                    g.FillRectangle(glow, r.Left + 4, r.Bottom - 2, r.Width - 8, 2);
+                }
             }
 
-            Color textColor = selected ? Theme.Text : (hovered ? Theme.Text : Theme.TextMuted);
+            Color textColor = selected ? Color.White : (hovered ? Theme.Text : Theme.TextMuted);
             using Font f = selected ? new Font(Font, FontStyle.Bold) : new Font(Font, FontStyle.Regular);
 
             TextRenderer.DrawText(

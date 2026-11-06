@@ -205,7 +205,7 @@ public sealed class DarkTrackBar : Control, ISupportInitialize
         Rectangle thumb = ThumbRect();
         bool on = Enabled;
 
-        // unfilled track
+        // unfilled stealth track
         using (SolidBrush b = new(on ? Theme.SurfaceAlt : Theme.Background))
         {
             g.FillRectangle(b, track);
@@ -215,45 +215,71 @@ public sealed class DarkTrackBar : Control, ISupportInitialize
             g.DrawRectangle(p, track);
         }
 
-        // filled portion, in MSI red, from Minimum up to the thumb
+        // filled portion, in luminous Cyber Neon Red gradient
         Rectangle fill = Vertical
             ? Rectangle.FromLTRB(track.Left, thumb.Top + (ThumbLong / 2), track.Right, track.Bottom)
             : Rectangle.FromLTRB(track.Left, track.Top, thumb.Left + (ThumbLong / 2), track.Bottom);
 
         if (fill.Width > 0 && fill.Height > 0)
         {
-            using SolidBrush b = new(on ? Theme.Accent : Theme.TextDisabled);
-            g.FillRectangle(b, fill);
+            if (on)
+            {
+                using LinearGradientBrush lgb = new(
+                    fill,
+                    Vertical ? Theme.AccentHover : Theme.Accent,
+                    Vertical ? Theme.Accent : Theme.AccentHover,
+                    Vertical ? LinearGradientMode.Vertical : LinearGradientMode.Horizontal);
+                g.FillRectangle(lgb, fill);
+            }
+            else
+            {
+                using SolidBrush b = new(Theme.TextDisabled);
+                g.FillRectangle(b, fill);
+            }
         }
 
         DrawTicks(g, track, on);
 
-        // thumb body
-        using (SolidBrush b = new(on ? Theme.SurfaceAlt : Theme.Background))
-        {
-            g.FillRectangle(b, thumb);
-        }
-
-        // thumb border
+        // Sci-Fi Chamfered Thumb Puck
         bool highlight = on && (_dragging || Focused || _hovered);
-        using (Pen p = new(highlight ? Theme.Accent : (on ? Theme.BorderBright : Theme.Border), highlight ? 1.5f : 1f))
+        Rectangle thumbCard = new(thumb.X, thumb.Y, thumb.Width - 1, thumb.Height - 1);
+
+        using (GraphicsPath path = GetChamferedRect(thumbCard, 3))
         {
-            g.DrawRectangle(p, thumb.X, thumb.Y, thumb.Width - 1, thumb.Height - 1);
+            using (SolidBrush b = new(highlight ? Color.FromArgb(38, 28, 36) : (on ? Theme.SurfaceHover : Theme.Background)))
+            {
+                g.FillPath(b, path);
+            }
+            using (Pen p = new(highlight ? Theme.Accent : (on ? Theme.BorderBright : Theme.Border), highlight ? 1.5f : 1f))
+            {
+                g.DrawPath(p, path);
+            }
         }
 
-        // center precision indicator line on thumb
+        // Center glowing cyber LED indicator pip on thumb
         if (Vertical)
         {
             int cy = thumb.Top + (thumb.Height / 2);
-            using Pen pGrip = new(on ? (highlight ? Theme.AccentHover : Theme.Accent) : Theme.TextDisabled, 2f);
-            g.DrawLine(pGrip, thumb.Left + 2, cy, thumb.Right - 3, cy);
+            using Pen pGrip = new(on ? (highlight ? Theme.AccentCyan : Theme.Accent) : Theme.TextDisabled, 2.2f);
+            g.DrawLine(pGrip, thumb.Left + 3, cy, thumb.Right - 4, cy);
         }
         else
         {
             int cx = thumb.Left + (thumb.Width / 2);
-            using Pen pGrip = new(on ? (highlight ? Theme.AccentHover : Theme.Accent) : Theme.TextDisabled, 2f);
-            g.DrawLine(pGrip, cx, thumb.Top + 2, cx, thumb.Bottom - 3);
+            using Pen pGrip = new(on ? (highlight ? Theme.AccentCyan : Theme.Accent) : Theme.TextDisabled, 2.2f);
+            g.DrawLine(pGrip, cx, thumb.Top + 3, cx, thumb.Bottom - 4);
         }
+    }
+
+    private static GraphicsPath GetChamferedRect(Rectangle r, int cut)
+    {
+        GraphicsPath path = new();
+        path.AddLine(r.Left, r.Top + cut, r.Left + cut, r.Top);
+        path.AddLine(r.Right - cut, r.Top, r.Right, r.Top + cut);
+        path.AddLine(r.Right, r.Bottom - cut, r.Right - cut, r.Bottom);
+        path.AddLine(r.Left + cut, r.Bottom, r.Left, r.Bottom - cut);
+        path.CloseFigure();
+        return path;
     }
 
     private void DrawTicks(Graphics g, Rectangle track, bool on)

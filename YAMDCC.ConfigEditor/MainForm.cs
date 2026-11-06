@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
@@ -134,6 +135,7 @@ internal sealed partial class MainForm : Form
         UpdateFanSelButton();
         UnifyProfileControls();
         AddOverlayMenuItem();
+        SetupCyberHud();
 
         // Set the window and taskbar icon directly from embedded red dragon icon
         Icon = LoadEmbeddedAppIcon();
@@ -386,10 +388,10 @@ internal sealed partial class MainForm : Form
                         lblTempC.Text = $"{cpuTemp}°C";
                         lblTempG.Text = $"{gpuTemp}°C";
                         string rpmStr = lblRPM1 != null && !string.IsNullOrEmpty(lblRPM1.Text) && lblRPM1.Text != "0 RPM"
-                            ? $" • {lblRPM1.Text}"
+                            ? $" // {lblRPM1.Text}"
                             : "";
-                        if (lblHeaderCpu != null) { lblHeaderCpu.Text = $"CPU: {cpuTemp}°C{rpmStr}"; }
-                        if (lblHeaderGpu != null) { lblHeaderGpu.Text = $"GPU: {gpuTemp}°C"; }
+                        if (lblHeaderCpu != null) { lblHeaderCpu.Text = $"CPU {cpuTemp}°C{rpmStr}"; lblHeaderCpu.Invalidate(); }
+                        if (lblHeaderGpu != null) { lblHeaderGpu.Text = $"GPU {gpuTemp}°C"; lblHeaderGpu.Invalidate(); }
                         if (notifyIcon != null)
                         {
                             string tip = $"MSI GF63 Tuner: CPU {cpuTemp}°C | GPU {gpuTemp}°C";
@@ -433,7 +435,8 @@ internal sealed partial class MainForm : Form
 
                         if (rpms.Length > 0 && rpms[0] > 0 && lblHeaderCpu != null)
                         {
-                            lblHeaderCpu.Text = $"CPU: {lblTempC.Text} • {rpms[0]} RPM";
+                            lblHeaderCpu.Text = $"CPU {lblTempC.Text} // {rpms[0]} RPM";
+                            lblHeaderCpu.Invalidate();
                         }
                     }
                     break;
@@ -854,17 +857,136 @@ internal sealed partial class MainForm : Form
         if (btnFanSel == null) return;
         if (!GPUFan)
         {
-            btnFanSel.Text = "⚡ CPU FAN (Active)";
+            btnFanSel.Text = "⚡ CPU CORE // ACTIVE";
             btnFanSel.BackColor = Theme.Accent;
             btnFanSel.ForeColor = Color.White;
             btnFanSel.FlatAppearance.BorderColor = Theme.AccentHover;
         }
         else
         {
-            btnFanSel.Text = "🎮 GPU FAN (Active)";
-            btnFanSel.BackColor = Color.FromArgb(0x00, 0x7A, 0xCC);
+            btnFanSel.Text = "❄ GPU CORE // ACTIVE";
+            btnFanSel.BackColor = Color.FromArgb(0x00, 0x82, 0xA0);
             btnFanSel.ForeColor = Color.White;
-            btnFanSel.FlatAppearance.BorderColor = Color.FromArgb(0x28, 0x98, 0xEE);
+            btnFanSel.FlatAppearance.BorderColor = Theme.AccentCyan;
+        }
+    }
+
+    private void SetupCyberHud()
+    {
+        if (pnlHeader != null)
+        {
+            pnlHeader.BackColor = Theme.Background;
+            pnlHeader.Paint += (s, e) =>
+            {
+                Graphics g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+
+                // 1. Top glowing cyber laser line (Neon Red -> Cyber Cyan)
+                if (pnlHeader.Width > 10)
+                {
+                    Rectangle topLaser = new(0, 0, pnlHeader.Width, 2);
+                    using LinearGradientBrush lgb = new(
+                        topLaser,
+                        Theme.Accent,
+                        Theme.AccentCyan,
+                        LinearGradientMode.Horizontal);
+                    g.FillRectangle(lgb, topLaser);
+                }
+
+                // 2. Futuristic sci-fi angled hazard ticks on left
+                using (Pen pMark = new(Theme.BorderBright, 1.2f))
+                {
+                    int startX = 14;
+                    for (int i = 0; i < 4; i++)
+                    {
+                        int x = startX + (i * 5);
+                        g.DrawLine(pMark, x, 38, x + 3, 44);
+                    }
+                }
+
+                // 3. Bottom tech rail dividing header from tabs
+                using (Pen pRail = new(Theme.Border, 1.2f))
+                {
+                    g.DrawLine(pRail, 0, pnlHeader.Height - 1, pnlHeader.Width, pnlHeader.Height - 1);
+                }
+            };
+        }
+
+        if (lblHeaderSubtitle != null)
+        {
+            lblHeaderSubtitle.Text = "THIN GF63 12HW • MS-16R7 ACPI MATRIX  ● ONLINE";
+            lblHeaderSubtitle.ForeColor = Theme.AccentCyan;
+        }
+
+        void StyleHudPod(Label lbl, Color accentColor)
+        {
+            if (lbl == null) return;
+            lbl.BackColor = Theme.SurfaceAlt;
+            lbl.ForeColor = Color.White;
+            lbl.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
+            lbl.Padding = new Padding(10, 4, 10, 4);
+            lbl.Paint += (s, e) =>
+            {
+                Label l = (Label)s;
+                Graphics g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                Rectangle r = new(0, 0, l.Width - 1, l.Height - 1);
+
+                // Deep glass background
+                using (SolidBrush b = new(Theme.SurfaceAlt))
+                {
+                    g.FillRectangle(b, r);
+                }
+
+                // Subtle perimeter border
+                using (Pen p = new(Theme.Border))
+                {
+                    g.DrawRectangle(p, r);
+                }
+
+                // Sci-Fi HUD bracket corners [  ]
+                using (Pen pBracket = new(accentColor, 1.8f))
+                {
+                    const int arm = 5;
+                    // Top-left
+                    g.DrawLine(pBracket, 0, 0, arm, 0);
+                    g.DrawLine(pBracket, 0, 0, 0, arm);
+                    // Bottom-left
+                    g.DrawLine(pBracket, 0, r.Bottom, arm, r.Bottom);
+                    g.DrawLine(pBracket, 0, r.Bottom, 0, r.Bottom - arm);
+                    // Top-right
+                    g.DrawLine(pBracket, r.Right, 0, r.Right - arm, 0);
+                    g.DrawLine(pBracket, r.Right, 0, r.Right, arm);
+                    // Bottom-right
+                    g.DrawLine(pBracket, r.Right, r.Bottom, r.Right - arm, r.Bottom);
+                    g.DrawLine(pBracket, r.Right, r.Bottom, r.Right, r.Bottom - arm);
+                }
+
+                // Draw Text centered
+                TextRenderer.DrawText(
+                    g, l.Text, l.Font, r,
+                    Color.White,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
+            };
+        }
+
+        StyleHudPod(lblHeaderCpu, Theme.AccentCyan);
+        StyleHudPod(lblHeaderGpu, Theme.AccentAmber);
+        StyleHudPod(lblHeaderProf, Theme.Accent);
+
+        if (btnApply != null)
+        {
+            btnApply.Text = "⚡ COMMIT TUNING";
+            btnApply.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
+        }
+        if (btnRevert != null)
+        {
+            btnRevert.Text = "↺ REVERT";
+            btnRevert.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+        }
+        if (chkFullBlast != null)
+        {
+            chkFullBlast.Text = "⚡ COOLER BOOST (100% FAN)";
         }
     }
 
@@ -922,18 +1044,18 @@ internal sealed partial class MainForm : Form
 
             // labels on left side
             tblCurve.ColumnStyles.Add(new ColumnStyle());
-            tblCurve.Controls.Add(FanCurveLabel("CURVE", scale, 0, ContentAlignment.MiddleCenter, Theme.TextMuted), 0, 0);
+            tblCurve.Controls.Add(FanCurveLabel("[STAGE]", scale, 0, ContentAlignment.MiddleCenter, Theme.TextMuted), 0, 0);
             tblCurve.Controls.Add(FanCurveLabel("⚡ Speed (%)", scale, 0, ContentAlignment.MiddleRight, Theme.Accent), 0, 1);
-            tblCurve.Controls.Add(FanCurveLabel("▲ Up (°C)", scale, (numFanSpds.Length + 1) * 2, ContentAlignment.MiddleRight, Color.FromArgb(0xFF, 0x8C, 0x00)), 0, 3);
-            tblCurve.Controls.Add(FanCurveLabel("▼ Down (°C)", scale, (numFanSpds.Length + 1) * 3, ContentAlignment.MiddleRight, Color.FromArgb(0x40, 0xC4, 0xFF)), 0, 4);
+            tblCurve.Controls.Add(FanCurveLabel("▲ Up (°C)", scale, (numFanSpds.Length + 1) * 2, ContentAlignment.MiddleRight, Theme.AccentAmber), 0, 3);
+            tblCurve.Controls.Add(FanCurveLabel("▼ Down (°C)", scale, (numFanSpds.Length + 1) * 3, ContentAlignment.MiddleRight, Theme.AccentCyan), 0, 4);
 
             for (int i = 0; i < numFanSpds.Length; i++)
             {
                 tblCurve.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F / numFanSpds.Length));
 
                 // Row 0: Point header card
-                string ptName = i == numFanSpds.Length - 1 ? $"Pt {i + 1} (Max)" : $"Point {i + 1}";
-                Color ptColor = i == numFanSpds.Length - 1 ? Theme.Accent : Theme.TextMuted;
+                string ptName = i == numFanSpds.Length - 1 ? $"[P{i + 1} MAX]" : $"[NODE {i + 1}]";
+                Color ptColor = i == numFanSpds.Length - 1 ? Theme.Accent : Theme.AccentCyan;
                 tblCurve.Controls.Add(FanCurveLabel(ptName, scale, 0, ContentAlignment.MiddleCenter, ptColor), i + 1, 0);
 
                 // Row 1: Speed NUD
@@ -1013,7 +1135,8 @@ internal sealed partial class MainForm : Form
 
         if (lblHeaderProf != null && cboProfSel.SelectedIndex >= 0 && cboProfSel.SelectedIndex < cfg.FanProfs.Count)
         {
-            lblHeaderProf.Text = $"ACTIVE: {cfg.FanProfs[cboProfSel.SelectedIndex].Name.ToUpperInvariant()}";
+            lblHeaderProf.Text = $"PROFILE // {cfg.FanProfs[cboProfSel.SelectedIndex].Name.ToUpperInvariant()}";
+            lblHeaderProf.Invalidate();
         }
 
         if (!Visible || WindowState == FormWindowState.Minimized || !Focused)
@@ -1451,7 +1574,8 @@ internal sealed partial class MainForm : Form
 
         if (lblHeaderProf != null && Config?.CpuFan?.FanProfs != null && Config.CpuFan.ProfSel < Config.CpuFan.FanProfs.Count)
         {
-            lblHeaderProf.Text = $"ACTIVE: {Config.CpuFan.FanProfs[Config.CpuFan.ProfSel].Name.ToUpperInvariant()}";
+            lblHeaderProf.Text = $"PROFILE // {Config.CpuFan.FanProfs[Config.CpuFan.ProfSel].Name.ToUpperInvariant()}";
+            lblHeaderProf.Invalidate();
         }
 
         btnProfAdd.Enabled = true;
@@ -1498,15 +1622,15 @@ internal sealed partial class MainForm : Form
 
         int row = 0;
 
-        void Header(string text)
+        void Header(string text, Color? color = null)
         {
             Label h = new()
             {
                 Text = $"//  {text.ToUpperInvariant()}",
                 AutoSize = true,
-                Margin = new Padding(0, row == 0 ? 0 : 12, 0, 4),
+                Margin = new Padding(0, row == 0 ? 0 : 14, 0, 4),
                 Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
-                ForeColor = Theme.Accent,
+                ForeColor = color ?? Theme.AccentCyan,
             };
             t.Controls.Add(h, 0, row);
             t.SetColumnSpan(h, 2);
@@ -1534,7 +1658,7 @@ internal sealed partial class MainForm : Form
         }
 
         // ---- CPU -----------------------------------------------------------
-        Header("CPU");
+        Header("01 // CPU CORE & THERMAL MATRIX", Theme.AccentCyan);
         Row("Temperature", lblTempC);
         lblCpuLoad = Row("Load");
         lblCpuClock = Row("Clock");
@@ -1548,7 +1672,7 @@ internal sealed partial class MainForm : Form
 
         foreach (GpuReading g in gpus)
         {
-            Header(g.Name + (g.Discrete ? "  (discrete)" : "  (integrated)"));
+            Header("02 // " + g.Name + (g.Discrete ? " (DISCRETE)" : " (INTEGRATED)"), Theme.AccentAmber);
 
             // the EC's GPU thermal sensor and fan channel refer to the
             // discrete GPU, so those rows only belong under it
@@ -1568,12 +1692,12 @@ internal sealed partial class MainForm : Form
         // ---- Cooling -------------------------------------------------------
         // This laptop has a single fan shared by the CPU and GPU, so listing a
         // "fan speed" under each of them implied two fans that do not exist.
-        Header("Cooling");
+        Header("03 // ACTIVE COOLING SUBSYSTEM", Theme.Accent);
         Row("Fan speed", lblFanSpdC);
         Row("Fan RPM", lblRPM1);
 
         // ---- System --------------------------------------------------------
-        Header("System");
+        Header("04 // SYSTEM METRICS & BATTERY", Theme.AccentGreen);
         lblRamUsed = Row("Memory");
         lblSysPower = Row("Battery draw");
         lblFps = Row("Framerate");
@@ -2306,7 +2430,8 @@ internal sealed partial class MainForm : Form
             default:
                 persist = true;
                 AppStatus.Repeats = 0;
-                lblStatus.Text = "Ready";
+                lblStatus.Text = "SYSTEM // READY [WMI2 ACTIVE]";
+                lblStatus.ForeColor = Theme.AccentCyan;
                 break;
         }
 

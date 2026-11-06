@@ -85,9 +85,9 @@ public class DarkCheckBox : CheckBox
         }
         else
         {
-            // Recessed dark charcoal fill when disabled
-            boxFill = IsHovered ? Color.FromArgb(32, 24, 28) : Theme.SurfaceAlt; // #1C1C24
-            boxBorder = IsHovered ? Theme.Accent : Theme.Border; // #381820 normal, Neon Red on hover
+            // Recessed dark charcoal fill when unchecked
+            boxFill = IsHovered ? Color.FromArgb(28, 34, 46) : Theme.SurfaceAlt;
+            boxBorder = IsHovered ? Theme.AccentCyan : Theme.Border;
         }
 
         // Draw box with subtle 3px rounded corners
