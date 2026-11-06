@@ -56,7 +56,6 @@ internal sealed partial class MainForm : Form
 
     private readonly Timer tmrPoll, tmrStatusReset, tmrSvcTimeout;
 
-    private bool GPUFan;
     private int Debug;
 
     #region Monitoring
@@ -132,7 +131,6 @@ internal sealed partial class MainForm : Form
         // rebuild the Monitoring and Extras tabs with modern cards
         BuildMonitoringTab();
         SetupModernExtrasTab();
-        UpdateFanSelButton();
         UnifyProfileControls();
         AddOverlayMenuItem();
         SetupCyberHud();
@@ -166,7 +164,6 @@ internal sealed partial class MainForm : Form
         tsiUninstall.ToolTipText = Strings.GetString("ttUninstall");
         tsiAbout.ToolTipText = Strings.GetString("ttAbout");
         tsiSource.ToolTipText = Strings.GetString("ttSource");
-        ttMain.SetToolTip(btnFanSel, Strings.GetString("ttFanSel"));
         ttMain.SetToolTip(btnProfAdd, Strings.GetString("ttProfAdd"));
         ttMain.SetToolTip(btnProfDel, Strings.GetString("ttProfDel"));
         ttMain.SetToolTip(btnApply, Strings.GetString("ttApply"));
@@ -567,6 +564,7 @@ internal sealed partial class MainForm : Form
 
         if (sfd.ShowDialog() == DialogResult.OK)
         {
+            SyncGpuFanProfiles();
             Config.ChargeLim = (byte)(chkChgLim.Checked ? numChgLim.Value : 0);
             Config.Save(sfd.FileName);
             CommonConfig.SetLastConf(sfd.FileName);
@@ -583,7 +581,7 @@ internal sealed partial class MainForm : Form
     #region Options
     private void ProfRename(object sender, EventArgs e)
     {
-        FanConf cfg = GPUFan ? Config.GpuFan : Config.CpuFan;
+        FanConf cfg = Config.CpuFan;
         FanProf curveCfg = cfg.FanProfs[cfg.ProfSel];
 
         TextInputDialog dlg = new(
@@ -592,13 +590,17 @@ internal sealed partial class MainForm : Form
         if (dlg.ShowDialog() == DialogResult.OK)
         {
             curveCfg.Name = dlg.Result;
+            if (Config.GpuFan?.FanProfs != null && cfg.ProfSel < Config.GpuFan.FanProfs.Count)
+            {
+                Config.GpuFan.FanProfs[cfg.ProfSel].Name = dlg.Result;
+            }
             cboProfSel.Items[cboProfSel.SelectedIndex] = dlg.Result;
         }
     }
 
     private void ProfChangeDesc(object sender, EventArgs e)
     {
-        FanConf cfg = GPUFan ? Config.GpuFan : Config.CpuFan;
+        FanConf cfg = Config.CpuFan;
         FanProf curveCfg = cfg.FanProfs[cfg.ProfSel];
 
         TextInputDialog dlg = new(
@@ -607,6 +609,10 @@ internal sealed partial class MainForm : Form
         if (dlg.ShowDialog() == DialogResult.OK)
         {
             curveCfg.Desc = dlg.Result;
+            if (Config.GpuFan?.FanProfs != null && cfg.ProfSel < Config.GpuFan.FanProfs.Count)
+            {
+                Config.GpuFan.FanProfs[cfg.ProfSel].Desc = dlg.Result;
+            }
             ttMain.SetToolTip(cboProfSel, Strings.GetString(
                 "ttProfSel", dlg.Result));
         }
@@ -852,25 +858,6 @@ internal sealed partial class MainForm : Form
         return Utils.GetEntryAssemblyIcon();
     }
 
-    private void UpdateFanSelButton()
-    {
-        if (btnFanSel == null) return;
-        if (!GPUFan)
-        {
-            btnFanSel.Text = "⚡ CPU CORE // ACTIVE";
-            btnFanSel.BackColor = Theme.Accent;
-            btnFanSel.ForeColor = Color.White;
-            btnFanSel.FlatAppearance.BorderColor = Theme.AccentHover;
-        }
-        else
-        {
-            btnFanSel.Text = "❄ GPU CORE // ACTIVE";
-            btnFanSel.BackColor = Color.FromArgb(0x00, 0x82, 0xA0);
-            btnFanSel.ForeColor = Color.White;
-            btnFanSel.FlatAppearance.BorderColor = Theme.AccentCyan;
-        }
-    }
-
     private void SetupCyberHud()
     {
         if (pnlHeader != null)
@@ -992,7 +979,7 @@ internal sealed partial class MainForm : Form
 
     private void UnifyProfileControls()
     {
-        Control lblPerf = tblFanControl?.GetControlFromPosition(5, 0);
+        Control lblPerf = tblFanControl?.GetControlFromPosition(4, 0);
         if (lblPerf != null) lblPerf.Visible = false;
         if (cboProfPerfMode != null) cboProfPerfMode.Visible = false;
         if (cboProfSel != null)
@@ -1003,16 +990,9 @@ internal sealed partial class MainForm : Form
         }
     }
 
-    private void FanSelChange(object sender, EventArgs e)
-    {
-        GPUFan = !GPUFan;
-        UpdateFanSelButton();
-        RefreshFanProf();
-    }
-
     private void RefreshFanProf()
     {
-        FanConf cfg = GPUFan ? Config.GpuFan : Config.CpuFan;
+        FanConf cfg = Config.CpuFan;
 
         cboProfSel.Items.Clear();
         foreach (FanProf curve in cfg.FanProfs)
@@ -1124,11 +1104,14 @@ internal sealed partial class MainForm : Form
 
     private void ProfSelChanged(object sender, EventArgs e)
     {
-        FanConf cfg = GPUFan ? Config.GpuFan : Config.CpuFan;
+        FanConf cfg = Config.CpuFan;
         FanProf curveCfg = cfg.FanProfs[cboProfSel.SelectedIndex];
 
         Config.CpuFan.ProfSel = cboProfSel.SelectedIndex;
-        Config.GpuFan.ProfSel = cboProfSel.SelectedIndex;
+        if (Config.GpuFan?.FanProfs != null && cboProfSel.SelectedIndex < Config.GpuFan.FanProfs.Count)
+        {
+            Config.GpuFan.ProfSel = cboProfSel.SelectedIndex;
+        }
 
         ttMain.SetToolTip(cboProfSel, Strings.GetString(
             "ttProfSel", cfg.FanProfs[cfg.ProfSel].Desc));
@@ -1220,7 +1203,7 @@ internal sealed partial class MainForm : Form
 
     private void ProfAdd(object sender, EventArgs e)
     {
-        FanConf cfg = GPUFan ? Config.GpuFan : Config.CpuFan;
+        FanConf cfg = Config.CpuFan;
 
         TextInputDialog dlg = new(
             Strings.GetString("dlgProfAdd"), "New Profile",
@@ -1229,7 +1212,10 @@ internal sealed partial class MainForm : Form
         if (dlg.ShowDialog() == DialogResult.OK)
         {
             CloneFanProf(Config.CpuFan, dlg.Result);
-            CloneFanProf(Config.GpuFan, dlg.Result);
+            if (Config.GpuFan != null)
+            {
+                CloneFanProf(Config.GpuFan, dlg.Result);
+            }
 
             // Add the new fan profile to the UI's profile list and select it:
             cboProfSel.Items.Add(dlg.Result);
@@ -1272,7 +1258,7 @@ internal sealed partial class MainForm : Form
 
     private void ProfDel(object sender, EventArgs e)
     {
-        FanConf cfg = GPUFan ? Config.GpuFan : Config.CpuFan;
+        FanConf cfg = Config.CpuFan;
         int profIdx = cfg.ProfSel;
         FanProf curveCfg = cfg.FanProfs[profIdx];
 
@@ -1282,13 +1268,16 @@ internal sealed partial class MainForm : Form
         {
             // Remove each equivalent fan profile from the config's list
             Config.CpuFan.FanProfs.RemoveAt(profIdx);
-            Config.CpuFan.ProfSel -= 1;
-            Config.GpuFan.FanProfs.RemoveAt(profIdx);
-            Config.GpuFan.ProfSel -= 1;
+            Config.CpuFan.ProfSel = Math.Max(0, Config.CpuFan.ProfSel - 1);
+            if (Config.GpuFan?.FanProfs != null && profIdx < Config.GpuFan.FanProfs.Count)
+            {
+                Config.GpuFan.FanProfs.RemoveAt(profIdx);
+                Config.GpuFan.ProfSel = Math.Max(0, Config.GpuFan.ProfSel - 1);
+            }
 
             // Remove from the list client-side, and select a different fan profile
             cboProfSel.Items.RemoveAt(cboProfSel.SelectedIndex);
-            cboProfSel.SelectedIndex = cfg.ProfSel;
+            cboProfSel.SelectedIndex = Config.CpuFan.ProfSel;
         }
     }
 
@@ -1308,10 +1297,14 @@ internal sealed partial class MainForm : Form
 
         if (cboProfSel.SelectedIndex != -1)
         {
-            FanConf cfg = GPUFan ? Config.GpuFan : Config.CpuFan;
-
-            cfg.FanProfs[cboProfSel.SelectedIndex]
-                .Thresholds[i].Speed = (byte)tbFanSpds[i].Value;
+            byte spd = (byte)tbFanSpds[i].Value;
+            Config.CpuFan.FanProfs[cboProfSel.SelectedIndex]
+                .Thresholds[i].Speed = spd;
+            if (Config.GpuFan?.FanProfs != null && cboProfSel.SelectedIndex < Config.GpuFan.FanProfs.Count)
+            {
+                Config.GpuFan.FanProfs[cboProfSel.SelectedIndex]
+                    .Thresholds[i].Speed = spd;
+            }
         }
     }
 
@@ -1320,15 +1313,18 @@ internal sealed partial class MainForm : Form
         NumericUpDown nud = (NumericUpDown)sender;
         int i = (int)nud.Tag;
 
-        FanConf cfg = GPUFan ? Config.GpuFan : Config.CpuFan;
-
-        Threshold threshold = cfg
+        Threshold threshold = Config.CpuFan
             .FanProfs[cboProfSel.SelectedIndex].Thresholds[i + 1];
 
         // Update associated down threshold slider
         numDownTs[i].Value += nud.Value - threshold.Tup;
 
-        threshold.Tup = (byte)numUpTs[i].Value;
+        byte val = (byte)numUpTs[i].Value;
+        threshold.Tup = val;
+        if (Config.GpuFan?.FanProfs != null && cboProfSel.SelectedIndex < Config.GpuFan.FanProfs.Count)
+        {
+            Config.GpuFan.FanProfs[cboProfSel.SelectedIndex].Thresholds[i + 1].Tup = val;
+        }
     }
 
     private void DownTChange(object sender, EventArgs e)
@@ -1336,9 +1332,13 @@ internal sealed partial class MainForm : Form
         NumericUpDown nud = (NumericUpDown)sender;
         int i = (int)nud.Tag;
 
-        FanConf cfg = GPUFan ? Config.GpuFan : Config.CpuFan;
-        cfg.FanProfs[cboProfSel.SelectedIndex].Thresholds[i + 1]
-            .Tdown = (byte)numDownTs[i].Value;
+        byte val = (byte)numDownTs[i].Value;
+        Config.CpuFan.FanProfs[cboProfSel.SelectedIndex].Thresholds[i + 1]
+            .Tdown = val;
+        if (Config.GpuFan?.FanProfs != null && cboProfSel.SelectedIndex < Config.GpuFan.FanProfs.Count)
+        {
+            Config.GpuFan.FanProfs[cboProfSel.SelectedIndex].Thresholds[i + 1].Tdown = val;
+        }
     }
 
     private void ChgLimToggle(object sender, EventArgs e)
@@ -1444,9 +1444,39 @@ internal sealed partial class MainForm : Form
         }
     }
 
+    private void SyncGpuFanProfiles()
+    {
+        if (Config?.CpuFan?.FanProfs == null) return;
+        if (Config.GpuFan == null)
+        {
+            Config.GpuFan = new FanConf();
+        }
+
+        Config.GpuFan.ProfSel = Config.CpuFan.ProfSel;
+        Config.GpuFan.FanProfs = new List<FanProf>();
+        foreach (FanProf p in Config.CpuFan.FanProfs)
+        {
+            FanProf clone = new()
+            {
+                Name = p.Name,
+                Desc = p.Desc,
+                PerfMode = p.PerfMode,
+                Thresholds = new List<Threshold>()
+            };
+            foreach (Threshold t in p.Thresholds)
+            {
+                clone.Thresholds.Add(new Threshold { Tup = t.Tup, Tdown = t.Tdown, Speed = t.Speed });
+            }
+            Config.GpuFan.FanProfs.Add(clone);
+        }
+    }
+
     private void ApplyConf(object sender, EventArgs e)
     {
         ToggleSvcCmds(false);
+
+        // Ensure GPU hardware thermal table mirrors CPU profile for unified single-fan cooling
+        SyncGpuFanProfiles();
 
         // Save the updated config
         Config.ChargeLim = (byte)(chkChgLim.Checked ? numChgLim.Value : 0);
@@ -1568,8 +1598,6 @@ internal sealed partial class MainForm : Form
         chkWinFnSwap.Checked = false;
         chkWinFnSwap.Enabled = false;
 
-        GPUFan = false;
-        UpdateFanSelButton();
         RefreshFanProf();
 
         if (lblHeaderProf != null && Config?.CpuFan?.FanProfs != null && Config.CpuFan.ProfSel < Config.CpuFan.FanProfs.Count)
@@ -1582,7 +1610,6 @@ internal sealed partial class MainForm : Form
         tsiProfAdd.Enabled = true;
         tsiProfEdit.Enabled = true;
         tsiECtoConf.Enabled = true;
-        btnFanSel.Enabled = true;
 
         UpdateStatus(StatusCode.None);
         ToggleSvcCmds(true);
@@ -2309,7 +2336,6 @@ internal sealed partial class MainForm : Form
 
         btnProfAdd.Enabled = false;
         btnProfDel.Enabled = false;
-        btnFanSel.Enabled = false;
         cboProfSel.Enabled = false;
         cboProfPerfMode.Enabled = false;
         if (tbFanSpds is not null)

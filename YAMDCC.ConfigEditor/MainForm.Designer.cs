@@ -112,7 +112,6 @@ namespace YAMDCC.ConfigEditor
             this.btnProfAdd = new System.Windows.Forms.Button();
             this.cboProfSel = new YAMDCC.Common.UI.DarkComboBox();
             this.tblCurve = new System.Windows.Forms.TableLayoutPanel();
-            this.btnFanSel = new System.Windows.Forms.Button();
             this.cboFanMode = new YAMDCC.Common.UI.DarkComboBox();
             this.cboPerfMode = new YAMDCC.Common.UI.DarkComboBox();
             this.chkWinFnSwap = new YAMDCC.Common.UI.DarkCheckBox();
@@ -485,23 +484,21 @@ namespace YAMDCC.ConfigEditor
             // 
             // tblFanControl
             // 
-            this.tblFanControl.ColumnCount = 8;
-            this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
-            this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
+            this.tblFanControl.ColumnCount = 6;
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblFanControl.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblFanControl.Controls.Add(this.btnFanSel, 0, 0);
-            this.tblFanControl.Controls.Add(lblProfSel, 1, 0);
-            this.tblFanControl.Controls.Add(this.cboProfSel, 2, 0);
-            this.tblFanControl.Controls.Add(this.btnProfAdd, 3, 0);
-            this.tblFanControl.Controls.Add(this.btnProfDel, 4, 0);
-            this.tblFanControl.Controls.Add(lblProfPerfMode, 5, 0);
-            this.tblFanControl.Controls.Add(this.cboProfPerfMode, 6, 0);
+            this.tblFanControl.Controls.Add(lblProfSel, 0, 0);
+            this.tblFanControl.Controls.Add(this.cboProfSel, 1, 0);
+            this.tblFanControl.Controls.Add(this.btnProfAdd, 2, 0);
+            this.tblFanControl.Controls.Add(this.btnProfDel, 3, 0);
+            this.tblFanControl.Controls.Add(lblProfPerfMode, 4, 0);
+            this.tblFanControl.Controls.Add(this.cboProfPerfMode, 5, 0);
             this.tblFanControl.Controls.Add(this.tblCurve, 0, 1);
+            this.tblFanControl.SetColumnSpan(this.tblCurve, 6);
             this.tblFanControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tblFanControl.Location = new System.Drawing.Point(0, 0);
             this.tblFanControl.Margin = new System.Windows.Forms.Padding(0);
@@ -528,13 +525,15 @@ namespace YAMDCC.ConfigEditor
             // 
             lblProfPerfMode.Anchor = System.Windows.Forms.AnchorStyles.Left;
             lblProfPerfMode.AutoSize = true;
+            lblProfPerfMode.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            lblProfPerfMode.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(184)))), ((int)(((byte)(0)))));
             lblProfPerfMode.Location = new System.Drawing.Point(317, 6);
-            lblProfPerfMode.Margin = new System.Windows.Forms.Padding(3, 3, 0, 3);
+            lblProfPerfMode.Margin = new System.Windows.Forms.Padding(12, 3, 0, 3);
             lblProfPerfMode.Name = "lblProfPerfMode";
             lblProfPerfMode.Padding = new System.Windows.Forms.Padding(0, 0, 0, 2);
-            lblProfPerfMode.Size = new System.Drawing.Size(68, 17);
+            lblProfPerfMode.Size = new System.Drawing.Size(95, 17);
             lblProfPerfMode.TabIndex = 6;
-            lblProfPerfMode.Text = "Perf. &mode:";
+            lblProfPerfMode.Text = "  ⚙️ SCENARIO:";
             // 
             // btnProfDel
             // 
@@ -574,19 +573,21 @@ namespace YAMDCC.ConfigEditor
             // 
             lblProfSel.Anchor = System.Windows.Forms.AnchorStyles.Left;
             lblProfSel.AutoSize = true;
-            lblProfSel.Location = new System.Drawing.Point(84, 6);
-            lblProfSel.Margin = new System.Windows.Forms.Padding(3, 3, 0, 3);
+            lblProfSel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            lblProfSel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(240)))), ((int)(((byte)(255)))));
+            lblProfSel.Location = new System.Drawing.Point(6, 6);
+            lblProfSel.Margin = new System.Windows.Forms.Padding(6, 3, 3, 3);
             lblProfSel.Name = "lblProfSel";
             lblProfSel.Padding = new System.Windows.Forms.Padding(0, 0, 0, 2);
-            lblProfSel.Size = new System.Drawing.Size(44, 17);
+            lblProfSel.Size = new System.Drawing.Size(115, 17);
             lblProfSel.TabIndex = 2;
-            lblProfSel.Text = "&Profile:";
+            lblProfSel.Text = "  ⚡ FAN PROFILE:";
             // 
             // tblCurve
             // 
             this.tblCurve.AutoSize = true;
             this.tblCurve.ColumnCount = 1;
-            this.tblFanControl.SetColumnSpan(this.tblCurve, 8);
+            this.tblFanControl.SetColumnSpan(this.tblCurve, 6);
             this.tblCurve.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle());
             this.tblCurve.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 20F));
             this.tblCurve.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -600,17 +601,6 @@ namespace YAMDCC.ConfigEditor
             this.tblCurve.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tblCurve.Size = new System.Drawing.Size(525, 307);
             this.tblCurve.TabIndex = 8;
-            // 
-            // btnFanSel
-            // 
-            this.btnFanSel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.btnFanSel.Location = new System.Drawing.Point(3, 3);
-            this.btnFanSel.Name = "btnFanSel";
-            this.btnFanSel.Size = new System.Drawing.Size(125, 26);
-            this.btnFanSel.TabIndex = 9;
-            this.btnFanSel.Text = "⚡ CPU Fan";
-            this.btnFanSel.UseVisualStyleBackColor = true;
-            this.btnFanSel.Click += new System.EventHandler(this.FanSelChange);
             // 
             // tabExtra
             // 
@@ -1028,6 +1018,7 @@ namespace YAMDCC.ConfigEditor
             this.lblFanSpdG.Size = new System.Drawing.Size(27, 15);
             this.lblFanSpdG.TabIndex = 13;
             this.lblFanSpdG.Text = "--%";
+            this.lblFanSpdG.Visible = false;
             // 
             // lblTempC
             // 
@@ -1061,6 +1052,7 @@ namespace YAMDCC.ConfigEditor
             lblFanSpdGL.Size = new System.Drawing.Size(87, 15);
             lblFanSpdGL.TabIndex = 4;
             lblFanSpdGL.Text = "GPU fan speed:";
+            lblFanSpdGL.Visible = false;
             // 
             // lblTempCL
             // 
@@ -1080,9 +1072,9 @@ namespace YAMDCC.ConfigEditor
             lblFanSpdCL.Location = new System.Drawing.Point(17, 3);
             lblFanSpdCL.Margin = new System.Windows.Forms.Padding(3);
             lblFanSpdCL.Name = "lblFanSpdCL";
-            lblFanSpdCL.Size = new System.Drawing.Size(87, 15);
+            lblFanSpdCL.Size = new System.Drawing.Size(65, 15);
             lblFanSpdCL.TabIndex = 0;
-            lblFanSpdCL.Text = "CPU fan speed:";
+            lblFanSpdCL.Text = "Fan speed:";
             // 
             // lblTempGL
             // 
@@ -1102,9 +1094,9 @@ namespace YAMDCC.ConfigEditor
             lblRPMs.Location = new System.Drawing.Point(42, 87);
             lblRPMs.Margin = new System.Windows.Forms.Padding(3);
             lblRPMs.Name = "lblRPMs";
-            lblRPMs.Size = new System.Drawing.Size(62, 15);
+            lblRPMs.Size = new System.Drawing.Size(55, 15);
             lblRPMs.TabIndex = 8;
-            lblRPMs.Text = "Fan RPMs:";
+            lblRPMs.Text = "Fan RPM:";
             // 
             // lblRPM2
             // 
@@ -1482,7 +1474,6 @@ namespace YAMDCC.ConfigEditor
         private YAMDCC.Common.UI.DarkComboBox cboProfPerfMode;
         private System.Windows.Forms.ToolStripMenuItem tsiFBExit;
         private System.Windows.Forms.TableLayoutPanel tblCurve;
-        private System.Windows.Forms.Button btnFanSel;
         private YAMDCC.Common.UI.DarkTabControl tcMain;
         private System.Windows.Forms.Label lblRPM2;
         private System.Windows.Forms.Label lblRPM1;

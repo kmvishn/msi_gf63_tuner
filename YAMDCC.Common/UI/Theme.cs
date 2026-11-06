@@ -283,12 +283,6 @@ public static class Theme
                     b.FlatAppearance.MouseDownBackColor = AccentPressed;
                     b.Cursor = Cursors.Hand;
                 }
-                else if (b.Name == "btnFanSel")
-                {
-                    // Fan toggle button: custom styled per active fan (CPU red / GPU blue)
-                    b.Font = new Font(b.Font.FontFamily, b.Font.Size, FontStyle.Bold);
-                    b.Cursor = Cursors.Hand;
-                }
                 else
                 {
                     b.BackColor = SurfaceAlt;
